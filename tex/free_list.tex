@@ -14,13 +14,13 @@
 
 	To ease implementation of page eviction strategies like CLOCK, a free list should use a FIFO data structure like a queue. Therefore the buffer frame freed first is (re-)used first as well.
 	
-	Almost every state-of-the-art DBMS supports multithreading and therefore, there are usually multiple threads concurrently fetching pages into the buffer pool and evicting pages from the buffer pool. Following this, a buffer frame free list has to support thread-safe functions to add frame indexes to the free list and to retrieve/remove frame indexes from it. Queues providing those thread-safe access functions are usually called multi-producer (add frame indexes) multi-consumer (retrieve/remove frame indexes) queues.
+	Almost every state-of-the-art DBMS support multithreading and therefore, there are usually multiple threads concurrently fetching pages into the buffer pool and evicting pages from the buffer pool. Following this, a buffer frame free list has to support thread-safe functions to push frame indexes to the free list and to pop frame indexes from it. Queues providing those thread-safe access functions are usually called multi-producer (add frame indexes) multi-consumer (retrieve/remove frame indexes) queues (\textbf{MPMC} queues).
 	
-	An approximate number of buffer indexes the free list must also be provided by any free list implementation to support the eviction of pages once there are only a few free buffer frames left. Thread-safe access to this number is desirable but not absolutely required.
+	An approximate number of buffer indexes in the free list must also be provided by any free list implementation to support the eviction of pages once there are only a few free buffer frames left. Thread-safe access to this number is desirable but not absolutely required.
 
 \subsection[Boost Lock-Free Queue with variable size]{Boost Lock-Free Queue with variable size} \label{subsec:boost}
 
-	The famous \textit{Boost C++ Libraries} offer a lock-free MPMC queue in the library \lstinline{Boost.Lockfree}. Like most other non-blocking data structures, this MPMC queue uses atomic operations instead of locks or mutexes. To support queues of dynamically changing sizes, this queue implementation also uses a free list internally.
+	The famous \textit{Boost C++ Libraries}\footnote{https://www.boost.org/} offer a lock-free MPMC queue\footnote{https://www.boost.org/doc/libs/release/doc/html/boost/lockfree/queue.html} in the library \lstinline{Boost.Lockfree}\footnote{https://www.boost.org/doc/libs/release/doc/html/lockfree.html}. Like most other non-blocking data structures, this MPMC queue uses atomic operations instead of locks or mutexes. To support queues of dynamically changing sizes, this queue implementation also uses a free list internally.
 	
 	The non-thread-safe construction/destruction of the data structure is no limitation for the purpose as a buffer frame free list because the buffer pool of our prototype system is constructed single-threaded. This data structure does not offer the number of contained elements and therefore, an approximate number of buffer indexes the free list needs to be managed outside.
 
@@ -30,21 +30,58 @@
 
 \subsection[CDS BasketQueue]{CDS Basket Lock-Free Queue} \label{subsec:cds-basket}
 
-	\cite{Hoffman:2007}
+	Besides other concurrent data structures, the \textit{Concurrent Data Structures} C++ library\footnote{https://github.com/khizmax/libcds} offers many different thread-safe queue implementations. The \emph{Basket Lock-Free Queue}\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_basket\_queue.html} is based on the algorithm proposed by M. Hoffman, O. Shalev and N. Shavit in \cite{Hoffman:2007}.
+	
+	Internally, the Basket Lock-Free Queue does not use an absolute FIFO order. Instead, it puts concurrently enqueued elements into one ``basket'' of elements. The elements within one basket are not specifically ordered but the different ``baskets'' used over time are ordered according to FIFO. Therefore, the dequeue operation just dequeues one of the elements in the oldest `´basket''.
 
 \subsection[CDS FCQueue]{CDS Flat-Combining Lock-Free Queue} \label{subsec:cds-fc}
 
+	The \textit{Concurrent Data Structures} C++ library does also offer a lock-free queue that uses Flat Combining\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_f\_c\_queue.html}. The Flat Combining technique was proposed by D. Hendler, I. Incze, N. Shavit and M. Tzafrir in \cite{Hendler:2010}.  This technique is used to make any sequential data structure thread-safe---in case of the \emph{Flat-Combining Lock-Free Queue}, the \lstinline{std::queue}\footnote{https://en.cppreference.com/w/cpp/container/queue} of the \textit{C++ Standard Library}\footnote{https://en.cppreference.com/w/cpp} is used as base data structure.
+	
+	The Flat Combining technique uses thread-local publication lists to record operations performed by those threads. A global lock is needed to be acquired to combine these thread-local publication lists into the global, sequential data structure. The thread which acquired the global lock also combines the publication lists of all other threads reducing the locking overhead. The returned value of each operation executed during the combining is stored into the respective publication list together with the global combining pass number. A thread with a non-empty publication list that cannot acquire the global lock needs to wait till the combining thread updated its publication list.
+
 \subsection[CDS MSQueue]{CDS Michael \& Scott Lock-Free Queue} \label{subsec:cds-ms}
+
+	Another lock-free queue implementation offered by the \textit{Concurrent Data Structures} C++ library is based on the famous Michael \& Scott lock-free queue algorithm\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_m\_s\_queue.html} which was proposed by M. Michael and M. Scott in \cite{Michael:1996}.
+	
+	The Michael \& Scott lock-free queue basically uses compare-and-swap (\textbf{CAS}) operations on the tail of the queue to synchronize enqueue operations. If a thread reads a NULL value as next element after the queue's tail, it swaps this value atomically with the value enqueued by this thread. Afterwards it adjusts the tail pointer. If a thread does not read the NULL value there during the CAS operation, another thread has not already adjusted the tail pointer and this thread needs to retry its enqueue operation with the new tail pointer. The dequeue operation is implemented similarly.
 
 \subsection[CDS MoirQueue]{CDS Variation of Michael \& Scott Lock-Free Queue} \label{subsec:cds-moir}
 
-\subsection[CDS OptimisticQueue]{CDS Ladan-Mozes \& Shavit Optimistic Queue} \label{subsec:cds-optimistic}
+	The \textit{Concurrent Data Structures} C++ library also offers an optimized variation of the Michael \& Scott lock-free queue algorithm\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_moir\_queue.html} which is based on the works of S. Doherty, L. Groves, V. Luchangco and M. Moir in \cite{Doherty:2004}.
+	
+	This optimization of the Michael \& Scott lock-free queue optimizes the dequeue operation to only read the tail pointer once.
 
 \subsection[CDS RWQueue]{CDS Michael \& Scott Blocking Queue with Fine-Grained Locking} \label{subsec:cds-rw}
+
+	M. Michael and M. Scott did also propose a blocking queue algorithm in \cite{Michael:1996}. This blocking queue implementation\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_r\_w\_queue.html} is also offered by the \textit{Concurrent Data Structures} C++ library.
+	
+	This blocking queue algorithm uses one read and one write lock protecting the head and tail of the queue. Therefore, only one thread a time can enqueue and only one thread at a time can dequeue elements.
+
+\subsection[CDS OptimisticQueue]{CDS Ladan-Mozes \& Shavit Optimistic Queue} \label{subsec:cds-optimistic}
+
+	The \textit{Concurrent Data Structures} C++ library also offers an optimistic queue implementation\footnote{http://libcds.sourceforge.net/doc/cds-api/classcds\_1\_1container\_1\_1\_optimistic\_queue.html} which is based on an algorithm proposed by E. Ladan-Mozes and N. Shavit in \cite{Ladan-Mozes:2004}.
+	
+	Instead of using expensive CAS operations on a singly-linked list (like in the Michael \& Scott lock-free queue), this algorithm uses a doubly-linked list with the possibility to detect and fix inconsistent enqueue and dequeue operations.
 
 \subsection[CDS SegmentedQueue]{CDS Segmented Queue} \label{subsec:cds-segmented}
 
 \subsection[CDS VyukovMPMCCycleQueue]{CDS Vyukov's MPMC Bounded Queue} \label{subsec:cds-vyukovmpmccycle}
 
+\subsection[Folly MPMC Queue]{Folly MPMC Queue}
+
+\subsection[Gavin Lambert's MPMC Queue]{Gavin Lambert's MPMC Bounded Lock-Free Queue}
+
+\subsection[\lstinline{moodycamel::ConcurrentQueue}]{\lstinline{moodycamel::ConcurrentQueue}}
+
+\subsection[Dmitry Vyukov's MPMC Queue]{Dmitry Vyukov's Bounded MPMC Queue}
+
+\subsection[Variation of Dmitry Vyukov's MPMC Queue]{Variation of Dmitry Vyukov's Bounded MPMC Queue}
+
+\subsection[Erik Rigtorp's MPMC Queue]{Erik Rigtorp's MPMC Queue}
+
+\subsection[Intel® TBB Bounded Concurrent Queue]{Intel® Threading Building Blocks Bounded Concurrent Dual Queue}%Check license
+
+\subsection[Intel® TBB Concurrent Queue]{Intel® Threading Building Blocks Concurrent Queue}%Check license
 
 \section[Performance Evaluation]{Performance Evaluation}
