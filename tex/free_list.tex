@@ -108,13 +108,13 @@
 
 \subsection[TBB Concurrent Queue]{Threading Building Blocks Concurrent Queue} \label{subsec:intel-bounded}%Check license
 
-	The Threading Building Blocks library\footnote{https://www.threadingbuildingblocks.org/} is an open source library originally developed by Intel®. The first thread-safe queue implementation\footnote{https://software.intel.com/en-us/node/506201} of this library is unbounded and non-blocking.
+	The Threading Building Blocks library\footnote{https://www.threadingbuildingblocks.org/} is an open source library originally developed by Intel®. The first thread-safe queue implementation\footnote{https://software.intel.com/en-us/node/506200} of this library is unbounded and non-blocking.
 	
 	Internally, this queue implementation uses multiple lock-based micro queues to allow concurrent enqueue/dequeue executions. Therefore, the guarantees of this queue is similar to those of the \lstinline{moodycamel::ConcurrentQueue} from Subsection \ref{subsec:moodycamel}.
 
 \subsection[TBB Bounded Concurrent Queue]{Threading Building Blocks Bounded Concurrent Dual Queue} \label{subsec:intel-unbounded}%Check license
 
-	The other thread-safe queue implementation\footnote{https://software.intel.com/en-us/node/506200} of the Threading Building Blocks library is unbounded and partially non-blocking.
+	The other thread-safe queue implementation\footnote{https://software.intel.com/en-us/node/506201} of the Threading Building Blocks library is unbounded and partially non-blocking.
 	
 	This queue implementation is almost identical to the other one of the Threading Building Blocks library but it does allow the limitation of the capacity. An enqueuing operation has to wait if the queue is already full according to the specified capacity.
 
