@@ -1,0 +1,220 @@
+\chapter[RANDOM Page Eviction]{RANDOM Page Eviction} \label{ch:random}
+
+\section[Purpose]{Purpose}
+
+	The buffer manager of a DBMS needs to evict pages from buffer frames when currently not buffered pages need to be fetched from the database while there are no more free buffer frames. Every buffer manager got a page evictioner---implementing one of the many page eviction algorithms developed since the 1960s---for that purpose.
+	
+	According to Belady's classification in \cite{Belady:1966}, the RANDOM eviction algorithm is the most representative algorithm in his \textit{Class 1} of page eviction algorithms. Those \textit{Class 1} page eviction algorithms do not use any information about the usage of a buffered page but just apply a static rule for the eviction decision. According to the newer classification of Effelsberg and Härder in \cite{Effelsberg:1984}, the RANDOM eviction algorithm is the only algorithm in the class of algorithms using neither the age of a buffered page nor the references of it for the eviction decision.
+	
+	The RANDOM strategy is the simplest page eviction strategy possible resulting in a low overhead and bad hit rates.
+
+\section[Compared Pseudorandom Number Generators]{Compared Pseudorandom Number Generators}
+
+	The only operation performed by the RANDOM page evictioner to decide which page to eviction from the buffer pool is the generation of a pseudorandom number in the range of buffer frame indexes. The database page contained in the selected buffer frame is evicted afterwards.
+	
+	There are many different classes of pseudorandom number generators (\textbf{PRNG}). Some of them provide pseudorandom numbers of high randomness others just take only few CPU cycles and almost no memory to generate a random number.
+	
+	\footnotetext[1]{\url{https://en.cppreference.com/w/cpp}}
+	\footnotetext[2]{\url{https://en.cppreference.com/w/cpp/numeric/random}}
+
+\subsection[\lstinline{std::minstd_rand0}]{\lstinline{std::minstd_rand0}} \label{subsec:minstd_rand0}
+
+	The \textit{C++ Standard Library}\footnotemark[1] provides the original \textit{MINSTD} PRNG as proposed by S. Park and K. Miller in \cite{Park:1988} predefined in the header \lstinline{<random>}\footnotemark[2].
+	
+	The original \textit{MINSTD} is a \emph{Lehmer random number generator} which is a linear congruential generator (\textbf{LCG}). It uses the parameters $m = 2^31 - 1$, $a = 16807$ and $c = 0$.
+
+\subsection[\lstinline{std::minstd_rand}]{\lstinline{std::minstd_rand}} \label{subsec:minstd_rand}
+
+	The \textit{C++ Standard Library}\footnotemark[1] also provides the revised \textit{MINSTD} PRNG as proposed by S. Park, K. Miller and P. Stockmeyer in \cite{Park:1993} predefined in the header \lstinline{<random>}\footnotemark[2].
+	
+	This revised \textit{MINSTD} improves the quality of generated pseudorandom numbers by using the parameter $a = 48271$.
+
+\subsection[\lstinline{std::mt19937}]{\lstinline{std::mt19937}} \label{subsec:mt19937}
+
+	The standard implementation of the Mersenne Twister MT19937---proposed by M. Matsumoto and T. Nishimura in \cite{Matsumoto:1998}---is also provided in the header \lstinline{<random>}\footnotemark[2] of the \textit{C++ Standard Library}\footnotemark[1].
+
+\subsection[\lstinline{std::mt19937_64}]{\lstinline{std::mt19937_64}} \label{subsec:mt19937_64}
+
+	The 64-bit version of the Mersenne Twister---MT19937-64---is also provided in the header \lstinline{<random>}\footnotemark[2] of the \textit{C++ Standard Library}\footnotemark[1].
+
+\subsection[\lstinline{std::ranlux24_base}]{\lstinline{std::ranlux24_base}} \label{subsec:ranlux24_base}
+
+	This PRNG, based on the 24-bit RANLUX generator---proposed in \cite{Luescher:1993} by M. Lüscher---, is a \emph{Subtract-With-Borrow} generator provided by the \textit{C++ Standard Library}\footnotemark[1] in header  \lstinline{<random>}\footnotemark[2].
+	
+	The computational cost of this PRNG is very high but the pseudorandom numbers generated are of high randomness.
+
+\subsection[\lstinline{std::ranlux48_base}]{\lstinline{std::ranlux48_base}} \label{subsec:ranlux48_base}
+
+	This PRNG is like the PNRG from Subsection \ref{subsec:ranlux24_base} but it uses 48-bit instead of 24-bit words. It is provided by the \textit{C++ Standard Library}\footnotemark[1] in header  \lstinline{<random>}\footnotemark[2].
+
+\subsection[\lstinline{std::ranlux24}]{\lstinline{std::ranlux24}} \label{subsec:ranlux24}
+
+	This is the 24-bit RANLUX generator originally proposed by M. Lüscher and F. James in \cite{Luescher:1993} and \cite{James:1993} provided by the \textit{C++ Standard Library}\footnotemark[1] in header  \lstinline{<random>}\footnotemark[2].
+
+\subsection[\lstinline{std::ranlux48}]{\lstinline{std::ranlux48}} \label{subsec:ranlux48}
+
+	This is the 48-bit version of the PRNG from Subsection \ref{subsec:ranlux24} provided by the \textit{C++ Standard Library}\footnotemark[1] in header  \lstinline{<random>}\footnotemark[2].
+
+\subsection[\lstinline{std::knuth_b}]{\lstinline{std::knuth_b}} \label{subsec:knuth_b}
+
+	
+
+\subsection[\lstinline{std::rand}]{\lstinline{std::rand}} \label{subsec:rand}
+
+	
+
+\subsection[\lstinline{std::random_device}]{\lstinline{std::random_device}} \label{subsec:random_device}
+
+	
+
+\subsection[Xorshift32]{Xorshift32} \label{subsec:xorshift32}
+
+\begin{@empty}
+	\lstset{
+		language = [ISO]C++,
+		style = basic
+	}
+	\begin{lstlisting}
+thread_local bool seed_initialized;
+thread_local uint32_t seed;
+
+uint32_t xorshift32_random() {
+	if (!seed_initialized) {
+		seed = std::random_device{}();
+		seed_initialized = true;
+	}
+	seed ^= seed << 13;
+	seed ^= seed >> 17;
+	seed ^= seed << 5;
+	return (seed % (block_count - 1) + 1);
+}
+	\end{lstlisting}
+\end{@empty}
+
+\subsection[Xorshift64]{Xorshift64} \label{subsec:xorshift64}
+
+\begin{@empty}
+	\lstset{
+		language = [ISO]C++,
+		style = basic
+	}
+	\begin{lstlisting}
+thread_local bool seed_initialized;
+thread_local uint64_t seed;
+
+uint32_t xorshift64_random() {
+	if (!seed_initialized) {
+		seed = std::random_device{}();
+		seed_initialized = true;
+	}
+	seed ^= seed << 13;
+	seed ^= seed >> 7;
+	seed ^= seed << 17;
+	return (seed % (block_count - 1) + 1);
+}
+	\end{lstlisting}
+\end{@empty}
+
+\subsection[Xorshift96]{Xorshift96} \label{subsec:xorshift96}
+
+\begin{@empty}
+	\lstset{
+		language = [ISO]C++,
+		style = basic
+	}
+	\begin{lstlisting}
+thread_local bool seed_initialized;
+thread_local uint32_t seed_0;
+thread_local uint32_t seed_1;
+thread_local uint32_t seed_2;
+
+uint32_t xorshift96_random() {
+	if (!seed_initialized) {
+		seed_0 = std::random_device{}();
+		seed_1 = std::random_device{}();
+		seed_2 = std::random_device{}();
+		seed_initialized = true;
+	}
+	uint32_t t;
+	seed_0 ^= seed_0 << 16;
+	seed_0 ^= seed_0 >> 5;
+	seed_0 ^= seed_0 << 1;
+
+	t = seed_0;
+	seed_0 = seed_1;
+	seed_1 = seed_2;
+	seed_2 = t ^ seed_0 ^ seed_1;
+
+	return (seed_2 % (block_count - 1)) + 1;
+}
+	\end{lstlisting}
+\end{@empty}
+
+\subsection[Xorshift128]{Xorshift128} \label{subsec:xorshift128}
+
+\begin{@empty}
+	\lstset{
+		language = [ISO]C++,
+		style = basic
+	}
+	\begin{lstlisting}
+thread_local bool seed_initialized;
+thread_local uint32_t seed_0;
+thread_local uint32_t seed_1;
+thread_local uint32_t seed_2;
+thread_local uint32_t seed_3;
+
+uint32_t xorshift128_random() {
+	if (!seed_initialized) {
+		seed_0 = std::random_device{}();
+		seed_1 = std::random_device{}();
+		seed_2 = std::random_device{}();
+		seed_3 = std::random_device{}();
+		seed_initialized = true;
+	}
+	uint32_t t = seed_0 ^ (seed_0 << 11);
+	seed_0 = seed_1;
+	seed_1 = seed_2;
+	seed_2 = seed_3;
+
+	seed_3 ^= (seed_3 >> 19) ^ t ^ (t >> 8);
+
+	return (seed_3 % (block_count - 1) + 1);
+}
+	\end{lstlisting}
+\end{@empty}
+
+\subsection[XorWow]{XorWow} \label{subsec:xorwow}
+
+	
+
+\subsection[Xorshift*]{Xorshift*} \label{subsec:xorshift*}
+
+	
+
+\subsection[Xorshift+]{Xorshift+} \label{subsec:xorshift+}
+
+	
+
+\subsection[Xoroshiro128+]{Xoroshiro128+} \label{subsec:xoroshiro128+}
+
+	
+
+\section[Performance Evaluation]{Performance Evaluation} \label{sec:random-performance}
+
+\subsection[Micro Benchmark]{Micro Benchmark}
+
+	
+
+\subsection[System Configuration]{Configuration of the Used System}
+
+\begin{@empty}
+	\begin{itemize}
+		\itemsep0em
+		\item	\textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ released early 2010
+		\item	\textbf{Main Memory:} $12 \times 8\text{GB} = 96\text{GB}$ of DDR2-SDRAM @$1333\text{MHz}$
+		\item	\textbf{OS:} \emph{Ubuntu 16.04}
+	\end{itemize}
+\end{@empty}
+
+\section{Conclusion}

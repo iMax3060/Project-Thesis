@@ -255,7 +255,7 @@
 }
 
 % Select the chapters (included files) for partial compilation of drafts (better than just commenting \include commands because of .aux-files); omit .tex file-ending here and in each of the \include commands:
-\includeonly{./tex/titlepage,./tex/abstract,\ignore{}./tex/free_list,\ignore{}./tex/tu_logo,./tex/command_definitions_early,./tex/command_definitions_late}
+\includeonly{./tex/titlepage,./tex/abstract,\ignore{}./tex/free_list,./tex/random,\ignore{}./tex/tu_logo,./tex/command_definitions_early,./tex/command_definitions_late}
 
 \include{./tex/tu_logo}
 
@@ -283,6 +283,8 @@
 	\pagenumbering{arabic}
 	
 	\include{./tex/free_list}
+	
+	\include{./tex/random}
 	
 	% glossary
 	
