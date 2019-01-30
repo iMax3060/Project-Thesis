@@ -8,7 +8,7 @@
 	
 	During operation, database pages are dynamically fetched from the database into buffer frames. Once a page is not required anymore, it might be evicted from the buffer pool freeing a buffer frame.
 	
-	Due to the fact that pages are only allowed to be fetched into free buffer frames, the buffer manager needs to know all the free buffer frames. Therefore, a free list for the buffer frames is required.
+	Due to the fact that pages are only allowed to be fetched into free buffer frames, the buffer manager needs to know all the free buffer frames. Therefore, a free list for the buffer frames---storing the frame indexes of free buffer frames---is required.
 
 \section[Compared Queue Implementations]{Compared Queue Implementations}
 
