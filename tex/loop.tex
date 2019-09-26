@@ -1,0 +1,38 @@
+\chapter[LOOP Page Eviction]{LOOP Page Eviction} \label{ch:loop}
+
+\section[Purpose]{Purpose}
+
+	The LOOP eviction algorithm is the simplest form of RANDOM eviction algorithm where the eviction candidates are selected round-robin according to the buffer frame index.
+	
+	The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a counter counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
+
+\section[Compared Concurrent Counter Implementations]{Compared Concurrent Counter Implementations}
+
+\subsection[Mutex Counter]{Mutex Counter} \label{subsec:mutex_counter}
+
+\subsection[Spinlock Counter]{Spinlock Counter} \label{subsec:spinlock_counter}
+
+\subsection[Modulo Counter]{Modulo Counter} \label{subsec:modulo_counter}
+
+\subsection[Local Counter]{Local Counter} \label{subsec:local_counter}
+
+\subsection[Local Modulo Counter]{Local Modulo Counter} \label{subsec:local_modulo_counter}
+	
+\subsection[Clunky Counter]{Clunky Counter} \label{subsec:clunky_counter}
+
+\section[Performance Evaluation]{Performance Evaluation} \label{sec:loop-performance}
+
+\subsection[Micro Benchmark]{Micro Benchmark}
+
+\subsection[System Configuration]{Configuration of the Used System}
+
+\begin{@empty}
+	\begin{itemize}
+		\itemsep0em
+		\item	\textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ released early 2010
+		\item	\textbf{Main Memory:} $12 \times 8\text{GB} = 96\text{GB}$ of DDR2-SDRAM @$1333\text{MHz}$
+		\item	\textbf{OS:} \emph{Ubuntu 16.04}
+	\end{itemize}
+\end{@empty}
+
+\section{Conclusion}
