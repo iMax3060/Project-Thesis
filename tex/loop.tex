@@ -2,29 +2,146 @@
 
 \section[Purpose]{Purpose}
 
-	The LOOP eviction algorithm is the simplest form of RANDOM eviction algorithms where the eviction candidates are selected round-robin according to the buffer frame index.
-	
-	The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a counter counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
+    The LOOP eviction algorithm is the simplest form of RANDOM eviction algorithms where the eviction candidates are selected round-robin according to the buffer frame index.
+
+    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a counter counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
 
 \section[Compared Concurrent Counter Implementations]{Compared Concurrent Counter Implementations}
 
-	
+    
 
 \subsection[Mutex Counter]{Mutex Counter} \label{subsec:mutex_counter}
 
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t mutex_counter() {
+    static std::mutex idx_lock;
+    static uint32_t used_idx = 0;
+    std::lock_guard<std::mutex> guard(idx_lock);
+    used_idx++;
+    if (used_idx >= block_cnt) {
+        used_idx = 1;
+    }
+    return used_idx;
+}
+    \end{lstlisting}
+\end{@empty}
+
 \subsection[Spinlock Counter]{Spinlock Counter} \label{subsec:spinlock_counter}
+
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t spinlock_counter() {
+    static std::atomic_flag idx_lock = ATOMIC_FLAG_INIT;
+    static uint32_t used_idx = 0;
+    uint32_t this_idx;
+    while (idx_lock.test_and_set(std::memory_order_acquire)) {}
+    used_idx++;
+    if (used_idx >= block_cnt) {
+        used_idx = 1;
+    }
+    this_idx = used_idx;
+    idx_lock.clear(std::memory_order_release);
+    return this_idx;
+}
+    \end{lstlisting}
+\end{@empty}
 
 \subsection[Modulo Counter]{Modulo Counter} \label{subsec:modulo_counter}
 
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t modulo_counter() {
+    static std::atomic<uint64_t> used_idx;
+    while (true) {
+        uint32_t this_idx = used_idx++ % block_cnt;
+        if (this_idx != 0) {
+            return this_idx;
+        } else {
+            continue;
+        }
+    }
+}
+    \end{lstlisting}
+\end{@empty}
+
 \subsection[Local Counter]{Local Counter} \label{subsec:local_counter}
 
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t local_counter() {
+    static thread_local uint32_t used_idx = 0;
+    used_idx++;
+    if (used_idx >= block_cnt) {
+        used_idx = 1;
+    }
+    return used_idx;
+}
+    \end{lstlisting}
+\end{@empty}
+
 \subsection[Local Modulo Counter]{Local Modulo Counter} \label{subsec:local_modulo_counter}
-	
+
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t local_modulo_counter() {
+    static thread_local uint64_t used_idx = 0;
+    static uint32_t modulo_factor = block_cnt - 1;
+    return (used_idx++ % modulo_factor) + 1;
+}
+    \end{lstlisting}
+\end{@empty}
+
 \subsection[Clunky Counter]{Clunky Counter} \label{subsec:clunky_counter}
+
+\begin{@empty}
+    \lstset{
+        language = [ISO]C++,
+        style = basic
+    }
+    \begin{lstlisting}
+inline uint32_t clunky_counter() {
+    static std::atomic<uint32_t> used_idx(1);
+    uint32_t picked_idx = used_idx;
+    if (picked_idx < block_cnt) {
+        used_idx++;
+        return picked_idx;
+    } else {
+        return used_idx = 1;
+    }
+}
+    \end{lstlisting}
+\end{@empty}
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:loop-performance}
 
-\subsection[Micro Benchmark]{Micro Benchmark}
+    Due to the implementation independence of the eviction decisions of LOOP page evictioners, the achieved hit rates achieved in an exemplary DBMS are not required as performance measure for this evaluation. The only performance difference between the different LOOP page evictioners is the overhead imposed by the concurrent counting. Therefore, a microbenchmark measuring only the execution time of the counting is appropriate.
+
+    The variables of the evaluation are the concurrent counter implementation---the alternatives presented in the previous section are evaluated---and the number of threads concurrently incrementing the counter. The smallest ($>0$) and largest integers returned by the counters---representing the smallest and largest buffer pool indexes---do not significantly influence the performance of the LOOP page evictioners. Therefore, this integer interval $\left[1 .. 999\right]$ is a constant in this evaluation.
+
+\subsection[Microbenchmark]{Microbenchmark}
+
+    The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a given number of worker threads---each of them calls the evaluated concurrent counter a given number of times (1,000,000)---and measures the wall time elapsed until all the worker threads finished their operation and joined.
 
 \subsection[System Configuration]{Configuration of the Used System}
 
@@ -33,7 +150,7 @@
         \itemsep0em
         \item \textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ released early 2010
         \item \textbf{Main Memory:} $12 \times 8\text{GB} = 96\text{GB}$ of DDR2-SDRAM @$1333\text{MHz}$
-        \item \textbf{OS:} \emph{Ubuntu 16.04}
+        \item \textbf{OS:} \emph{Ubuntu 18.04}
     \end{itemize}
 \end{@empty}
 
