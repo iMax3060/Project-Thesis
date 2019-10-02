@@ -2,15 +2,28 @@
 
 \section[Purpose]{Purpose}
 
-    The LOOP eviction algorithm is the simplest form of RANDOM eviction algorithms where the eviction candidates are selected round-robin according to the buffer frame index.
+    The LOOP page eviction algorithm is the simplest form of the RANDOM page eviction strategy where the eviction candidates are selected round-robin based on their buffer frame index.
 
-    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a counter counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
+    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically one global counter or one counter per evicting thread counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
 
-\section[Compared Concurrent Counter Implementations]{Compared Concurrent Counter Implementations}
+\section[Compared Counter Implementations]{Compared Counter Implementations}
 
-    
+    Six different counter implementations were evaluated for the use in a LOOP page eviction algorithm. They can be grouped as follows:
+
+\begin{@empty}
+    \begin{itemize}
+        \itemsep0em
+        \item blocking counters
+        \item non-blocking counters
+        \item local counters
+    \end{itemize}
+\end{@empty}
+
+    The counters return values from $1$ to \lstinline{block_cnt - 1}.
 
 \subsection[Mutex Counter]{Mutex Counter} \label{subsec:mutex_counter}
+
+    The \emph{mutex counter} is a blocking counter which uses one global counter---used to select candidates for page eviction---synchronized using a mutex called through the \lstinline{std::mutex} interface.
 
 \begin{@empty}
     \lstset{
@@ -32,6 +45,8 @@ inline uint32_t mutex_counter() {
 \end{@empty}
 
 \subsection[Spinlock Counter]{Spinlock Counter} \label{subsec:spinlock_counter}
+
+    The \emph{spinlock counter} is also a blocking counter using one global counter but it is protected by a spinlock implemented using a \lstinline{std::atomic_flag}.
 
 \begin{@empty}
     \lstset{
@@ -57,6 +72,8 @@ inline uint32_t spinlock_counter() {
 
 \subsection[Modulo Counter]{Modulo Counter} \label{subsec:modulo_counter}
 
+    The \emph{modulo counter} is a non-blocking counter which uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint64_t>}). The modulo is calculated thread-locally and therefore, the value of the global counter is strictly increasing.
+
 \begin{@empty}
     \lstset{
         language = [ISO]C++,
@@ -79,6 +96,8 @@ inline uint32_t modulo_counter() {
 
 \subsection[Local Counter]{Local Counter} \label{subsec:local_counter}
 
+    The \emph{local counter} is---obviously---a local counter where each thread performing page evictions uses its own circular counter.
+
 \begin{@empty}
     \lstset{
         language = [ISO]C++,
@@ -98,6 +117,8 @@ inline uint32_t local_counter() {
 
 \subsection[Local Modulo Counter]{Local Modulo Counter} \label{subsec:local_modulo_counter}
 
+    The \emph{local modulo counter} is a local counter where the circular counting is not achieved with branch operation but with a possibly cheaper modulo operation calculated during each call.
+
 \begin{@empty}
     \lstset{
         language = [ISO]C++,
@@ -113,6 +134,8 @@ inline uint32_t local_modulo_counter() {
 \end{@empty}
 
 \subsection[Clunky Counter]{Clunky Counter} \label{subsec:clunky_counter}
+
+    The \emph{clunky counter} is a non-blocking counter which uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint32_t>}) and application-specific synchronization to achieve circular counting using branch operations.
 
 \begin{@empty}
     \lstset{
