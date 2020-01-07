@@ -209,3 +209,15 @@
   }
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% enddefinition
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Allows the positioning of nodes on a circle:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% begindefinition
+\usepackage[most]{tcolorbox}
+
+\newtcblisting{centeredshadowboxlisting}[1][]{%
+    listing options = {style = tcblatex, #1}, hbox, listing only, enhanced, arc = 0pt, outer arc = 0pt, top = 1mm, bottom = 1mm, left = 1mm, right = 1mm, boxrule = 0.4pt, drop fuzzy shadow, before = \lstset{style = tcolorbox}\begin{center}, after = \end{center}%
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% enddefinition

@@ -4,7 +4,7 @@
 
     The LOOP page eviction algorithm is the simplest form of the RANDOM page eviction strategy where the eviction candidates are selected round-robin based on their buffer frame index.
 
-    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically one global counter or one counter per evicting thread counting modulo the number of buffer pool frames--- which generates an ordered sequence of buffer indexes.
+    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a \emph{Counter-Based Random Number Generator} as in Subsection \ref{subsec:cbrng}, but instead of using a complex mapping function, the identity function modulo the number of buffer pool frames is used to generate the pseudorandom numbers--- which generates an ordered sequence of buffer indexes.
 
 \section[Compared Counter Implementations]{Compared Counter Implementations}
 
@@ -14,12 +14,27 @@
     \begin{itemize}
         \itemsep0em
         \item blocking counters
+              \begin{itemize}
+              \itemsep0em
+                  \item mutex counter
+                  \item spinlock counter
+              \end{itemize}
         \item non-blocking counters
+              \begin{itemize}
+                  \itemsep0em
+                  \item modulo counter
+                  \item lock-free counter
+              \end{itemize}
         \item local counters
+              \begin{itemize}
+                  \itemsep0em
+                  \item local counter
+                  \item local modulo counter
+              \end{itemize}
     \end{itemize}
 \end{@empty}
 
-    The counters return values from $1$ to \lstinline{block_cnt - 1}.
+    The counters return values from $1$ to $\texttt{blockCount} - 1$---the range of the buffer frame indexes.
 
 \subsection[Mutex Counter]{Mutex Counter} \label{subsec:mutex_counter}
 
@@ -27,21 +42,20 @@
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t mutex_counter() {
-    static std::mutex idx_lock;
-    static uint32_t used_idx = 0;
-    std::lock_guard<std::mutex> guard(idx_lock);
-    used_idx++;
-    if (used_idx >= block_cnt) {
-        used_idx = 1;
+\begin{centeredshadowboxlisting}
+inline uint32_t mutexCounter() {
+    static std::mutex indexLock;
+    static uint32_t lastIndex = 0;
+    std::lock_guard<std::mutex> guard(indexLock);
+    lastIndex++;
+    if (lastIndex >= blockCount) {
+        lastIndex = 1;
     }
-    return used_idx;
+    return lastIndex;
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
 \subsection[Spinlock Counter]{Spinlock Counter} \label{subsec:spinlock_counter}
@@ -50,24 +64,25 @@ inline uint32_t mutex_counter() {
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t spinlock_counter() {
-    static std::atomic_flag idx_lock = ATOMIC_FLAG_INIT;
-    static uint32_t used_idx = 0;
-    uint32_t this_idx;
-    while (idx_lock.test_and_set(std::memory_order_acquire)) {}
-    used_idx++;
-    if (used_idx >= block_cnt) {
-        used_idx = 1;
+\begin{centeredshadowboxlisting}
+inline uint32_t spinlockCounter() {
+    static std::atomic_flag indexLock =
+        ATOMIC_FLAG_INIT;
+    static uint32_t lastIndex = 0;
+    uint32_t newIndex;
+    while (indexLock.test_and_set(
+               std::memory_order_acquire)) {}
+    lastIndex++;
+    if (lastIndex >= blockCount) {
+        lastIndex = 1;
     }
-    this_idx = used_idx;
-    idx_lock.clear(std::memory_order_release);
-    return this_idx;
+    newIndex = lastIndex;
+    indexLock.clear(std::memory_order_release);
+    return newIndex;
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
 \subsection[Modulo Counter]{Modulo Counter} \label{subsec:modulo_counter}
@@ -76,22 +91,22 @@ inline uint32_t spinlock_counter() {
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t modulo_counter() {
-    static std::atomic<uint64_t> used_idx;
+\begin{centeredshadowboxlisting}
+inline uint32_t moduloCounter() {
+    static std::atomic<uint64_t> lastIndex;
     while (true) {
-        uint32_t this_idx = used_idx++ % block_cnt;
-        if (this_idx != 0) {
-            return this_idx;
+        uint32_t newIndex = lastIndex++
+                          % blockCount;
+        if (newIndex != 0) {
+            return newIndex;
         } else {
             continue;
         }
     }
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
 \subsection[Local Counter]{Local Counter} \label{subsec:local_counter}
@@ -100,60 +115,58 @@ inline uint32_t modulo_counter() {
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t local_counter() {
-    static thread_local uint32_t used_idx = 0;
-    used_idx++;
-    if (used_idx >= block_cnt) {
-        used_idx = 1;
+\begin{centeredshadowboxlisting}
+inline uint32_t localCounter() {
+    static thread_local uint32_t lastIndex = 0;
+    lastIndex++;
+    if (lastIndex >= blockCount) {
+        lastIndex = 1;
     }
-    return used_idx;
+    return lastIndex;
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
 \subsection[Local Modulo Counter]{Local Modulo Counter} \label{subsec:local_modulo_counter}
 
-    The \emph{local modulo counter} is a local counter where the circular counting is not achieved with branch operation but with a possibly cheaper modulo operation calculated during each call.
+    The \emph{local modulo counter} is a local counter where the circular counting is not achieved with a branch operation but with a possibly cheaper modulo operation calculated during each call.
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t local_modulo_counter() {
-    static thread_local uint64_t used_idx = 0;
-    static uint32_t modulo_factor = block_cnt - 1;
-    return (used_idx++ % modulo_factor) + 1;
+\begin{centeredshadowboxlisting}
+inline uint32_t localModuloCounter() {
+    static thread_local uint64_t lastIndex = 0;
+    static uint32_t moduloDivisor = blockCount
+                                  - 1;
+    return (lastIndex++ % moduloDivisor) + 1;
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
-\subsection[Clunky Counter]{Clunky Counter} \label{subsec:clunky_counter}
+\subsection[Lock-Free Counter]{Lock-Free Counter} \label{subsec:clunky_counter}
 
-    The \emph{clunky counter} is a non-blocking counter which uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint32_t>}) and application-specific synchronization to achieve circular counting using branch operations.
+    The \emph{lock-free counter} is a non-blocking counter which uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint32_t>}) and algorithm-specific synchronization to achieve circular counting using branch operations.
 
 \begin{@empty}
     \lstset{
-        language = [ISO]C++,
-        style = basic
+        language = [ISO]C++
     }
-    \begin{lstlisting}
-inline uint32_t clunky_counter() {
-    static std::atomic<uint32_t> used_idx(1);
-    uint32_t picked_idx = used_idx;
-    if (picked_idx < block_cnt) {
-        used_idx++;
-        return picked_idx;
+\begin{centeredshadowboxlisting}
+inline uint32_t lockFreeCounter() {
+    static std::atomic<uint32_t> newIndex(1);
+    uint32_t pickedIndex = newIndex;
+    if (pickedIndex < blockCount) {
+        newIndex++;
+        return pickedIndex;
     } else {
-        return used_idx = 1;
+        return newIndex = 1;
     }
 }
-    \end{lstlisting}
+\end{centeredshadowboxlisting}
 \end{@empty}
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:loop-performance}
@@ -164,17 +177,126 @@ inline uint32_t clunky_counter() {
 
 \subsection[Microbenchmark]{Microbenchmark}
 
-    The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a given number of worker threads---each of them calls the evaluated concurrent counter a given number of times (1,000,000)---and measures the wall time elapsed until all the worker threads finished their operation and joined.
+    The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a given number of worker threads---each of them calls the evaluated concurrent counter a given number of times (\num{1000000})---and measures the wall time elapsed until all the worker threads finished their operation and joined.
 
-\subsection[System Configuration]{Configuration of the Used System}
+\subsection[System A Configuration]{Configuration of the Used System A}
 
 \begin{@empty}
     \begin{itemize}
         \itemsep0em
-        \item \textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ released early 2010
+        \item \textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ from early 2010
         \item \textbf{Main Memory:} $12 \times 8\text{GB} = 96\text{GB}$ of DDR2-SDRAM @$1333\text{MHz}$
         \item \textbf{OS:} \emph{Ubuntu 18.04}
     \end{itemize}
 \end{@empty}
 
+\subsection[System B Configuration]{Configuration of the Used System B}
+
+\begin{@empty}
+    \begin{itemize}
+        \itemsep0em
+		\item	\textbf{CPU:} \emph{Intel® Core™ i7-8700} @$12 \times \SI{3.2}{\giga\hertz}$ from late 2017
+        \item	\textbf{Main Memory:} $2 \times 8\text{GB} = 16\text{GB}$ of DDR4-SDRAM @\SI{2666}{\mega\hertz}
+        \item	\textbf{OS:} \emph{Ubuntu 19.10}
+    \end{itemize}
+\end{@empty}
+
+\subsection[Microbenchmark Results]{Microbenchmark Results} \label{subsec:loop-results}
+
+\begin{@empty}
+    Figure \ref{fig:loop_server_performance} shows the LOOP index generation performance of the NUMA system A---figure \ref{fig:loop_desktop_performance} shows the performance of the UMA system B. The LOOP index generation throughput is total number of indexes generated (from all working threads) per time.
+
+    \nottoggle{bwmode}{
+        \tikzset{%
+            mutex/.style = {color = cyan, mark = *},
+            spinlock/.style = {color = magenta, mark = *},
+            modulo/.style = {color = yellow, mark = square*},
+            local/.style = {color = green, mark = diamond*},
+            localModulo/.style = {color = red, mark = diamond*},
+            lockFree/.style = {color = blue, mark = square*}
+        }
+    }{
+        \tikzset{%
+            mutex/.style = {color = black, mark = *},
+            spinlock/.style = {color = black!50, mark = *},
+            modulo/.style = {color = black, mark = square*},
+            local/.style = {color = black, mark = diamond*},
+            localModulo/.style = {color = black!50, mark = diamond*},
+            lockFree/.style = {color = black!50, mark = square*}
+        }
+    }
+    
+    \begin{figure}[ht!]
+        \centering
+        \resizebox{\textwidth}{!}{
+            \begin{tikzpicture}[]
+                \begin{axis}[xlabel = {Number of threads},
+                             xlabel near ticks,
+                             xmin = 1,
+                             xmax = 24,
+                             xtick distance = 6,
+                             extra x ticks = {1},
+                             scaled x ticks = false,
+                             ylabel = {$\text{Average index generations }\left[\si{\indexes\per\second}\right]$},
+                             ylabel near ticks,
+                             ymode = log,
+                             scaled y ticks = false,
+                             grid = both,
+                             width = \textwidth,
+                             height = .65\textheight]
+
+                    \addplot[mutex]       table[x = threads, y = throughput] {./data/loop/server_mutex_counter.csv};        \label{pgfplots:server-mutex}
+                    \addplot[spinlock]    table[x = threads, y = throughput] {./data/loop/server_spinlock_counter.csv};     \label{pgfplots:server-spinlock}
+                    \addplot[modulo]      table[x = threads, y = throughput] {./data/loop/server_modulo_counter.csv};       \label{pgfplots:server-modulo}
+                    \addplot[local]       table[x = threads, y = throughput] {./data/loop/server_local_counter.csv};        \label{pgfplots:server-local}
+                    \addplot[localModulo] table[x = threads, y = throughput] {./data/loop/server_local_modulo_counter.csv}; \label{pgfplots:server-local-modulo}
+                    \addplot[lockFree]    table[x = threads, y = throughput] {./data/loop/server_lock_free_counter.csv};    \label{pgfplots:server-lock-free}
+                \end{axis}
+            \end{tikzpicture}
+        }
+        \caption{The throughput of index generations of the evaluated LOOP implementations on system A}
+        \label{fig:loop_server_performance}
+    \end{figure}
+
+    The \emph{blocking counters}---\emph{mutex counter} \ref{pgfplots:server-mutex} and \emph{spinlock counter} \ref{pgfplots:server-spinlock}---are the slowest counters on both systems. The locking overhead and---for higher numbers of working threads---the lock contention make these concurrent counters more than one order of magnitude slower than the \emph{non-blocking counters}. The more optimized mutex, which uses low-overhead busy-waiting (spinlock behavior) in situations of low contention and higher-overhead queuing and context switches in situations of higher contention, can better utilize the available physical CPU cores by suspending waiting threads---and therefore, omitting unnecessary uses of hyper-threading.
+
+    The \emph{non-blocking counters}---\emph{modulo counter} \ref{pgfplots:server-modulo} and \emph{lock-free counter} \ref{pgfplots:server-lock-free}---perform almost identical to each other. In situations without contention, the only serious overhead of those counters are the conditional branch operations. But most of the times, a modern CPU can correctly predict the targets of these branches. But when there are multiple working threads counting, the atomic operations on the counter variable are the major overhead slowing down the \emph{non-blocking counters} compared to \emph{local counters}.
+
+    \begin{figure}[ht!]
+        \centering
+        \resizebox{\textwidth}{!}{
+            \begin{tikzpicture}[]
+                \begin{axis}[xlabel = {Number of threads},
+                             xlabel near ticks,
+                             xmin = 1,
+                             xmax = 12,
+                             xtick distance = 3,
+                             extra x ticks = {1},
+                             scaled x ticks = false,
+                             ylabel = {$\text{Average index generations }\left[\si{\indexes\per\second}\right]$},
+                             ylabel near ticks,
+                             ymode = log,
+                             scaled y ticks = false,
+                             grid = both,
+                             width = \textwidth,
+                             height = .65\textheight]
+
+                    \addplot[mutex]       table[x = threads, y = throughput] {./data/loop/desktop_mutex_counter.csv};        \label{pgfplots:desktop-mutex}
+                    \addplot[spinlock]    table[x = threads, y = throughput] {./data/loop/desktop_spinlock_counter.csv};     \label{pgfplots:desktop-spinlock}
+                    \addplot[modulo]      table[x = threads, y = throughput] {./data/loop/desktop_modulo_counter.csv};       \label{pgfplots:desktop-modulo}
+                    \addplot[local]       table[x = threads, y = throughput] {./data/loop/desktop_local_counter.csv};        \label{pgfplots:desktop-local}
+                    \addplot[localModulo] table[x = threads, y = throughput] {./data/loop/desktop_local_modulo_counter.csv}; \label{pgfplots:desktop-local-modulo}
+                    \addplot[lockFree]    table[x = threads, y = throughput] {./data/loop/desktop_lock_free_counter.csv};    \label{pgfplots:desktop-lock-free}
+                \end{axis}
+            \end{tikzpicture}
+        }
+        \caption{The throughput of index generations of the evaluated LOOP implementations on system B}
+        \label{fig:loop_desktop_performance}
+    \end{figure}
+
+    Obviously, the \emph{local counters}---\emph{local counter} \ref{pgfplots:server-local} and \emph{local modulo counter} \ref{pgfplots:server-local-modulo}---are the fastest counters because they completely omit any synchronization between the counting threads. While the other counters count based on a global counter, these ones count based on local counters, resulting in a thread-wise round-robin selection of eviction candidates instead of a global round-robin selection of eviction candidates. The independence of the threads makes these counters very scalable as long as there are hardware threads available. This results in a performance advantage of up to almost two orders of magnitude compared to the \emph{non-blocking counters}. The significantly higher performance of the \emph{local counter} in comparison to the \emph{local modulo counter} is the result of the slow modulo operation when the divisor is not a power of two. The branch target of the conditional branch in the \emph{local counter} is predicted correctly most of the times, making its overhead negligible.
+\end{@empty}
+
 \section{Conclusion}
+
+    Each LOOP page eviction algorithm is a good replacement for any other RANDOM page eviction algorithm. Tests in an OLTP database showed a hit rate of the LOOP strategy not worse than the one of any RANDOM page eviction strategy and the overheads of the LOOP page eviction strategies---especially of the \emph{local counters}---are lower than the ones of any other RANDOM page eviction strategy. This makes the LOOP page evictioners superior to the other RANDOM page evictioners in OLTP applications (represented by the TPC-C benchmark). Due to the fact, that the use of local counters instead of a global counter does not change the hit rate in the database, the \emph{local counter}---the LOOP page eviction algorithm with the lowest overhead---can be recommended.
