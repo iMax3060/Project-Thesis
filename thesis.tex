@@ -127,6 +127,7 @@
 \DeclareSIUnit\year{\text{year}}                 % define the unit \year
 \DeclareSIUnit\queries{\text{queries}}           % define the unit \queries
 \DeclareSIUnit\transactions{\text{transactions}} % define the unit \transactions
+\DeclareSIUnit\operations{\text{operations}}     % define the unit \operations
 \usepackage[hyphens]{url}
 
 \usepackage{graphicx}                % allows including of graphics and the scaling and rotating of elements
@@ -146,6 +147,29 @@
         ]{xcolor}                    % extended color facility
 \usepackage{blindtext}               % allows to easily add some dummy text (similar to lipsum)
 \usepackage{prelim2e}                % marks every page as being a preliminary version when this document is compiled as a draft
+
+\definecolor{simpleMaroon}{HTML}{800000}
+\definecolor{simpleBrown}{HTML}{9A6324}
+\definecolor{simpleOlive}{HTML}{808000}
+\definecolor{simpleTeal}{HTML}{469990}
+\definecolor{simpleNavy}{HTML}{000075}
+\definecolor{simpleBlack}{HTML}{000000}
+\definecolor{simpleRed}{HTML}{E6194B}
+\definecolor{simpleOrange}{HTML}{F58231}
+\definecolor{simpleYellow}{HTML}{FFE119}
+\definecolor{simpleLime}{HTML}{BFEF45}
+\definecolor{simpleGreen}{HTML}{3CB44B}
+\definecolor{simpleCyan}{HTML}{42D4F4}
+\definecolor{simpleBlue}{HTML}{4363D8}
+\definecolor{simplePurple}{HTML}{911EB4}
+\definecolor{simpleMagenta}{HTML}{F032E6}
+\definecolor{simpleGrey}{HTML}{A9A9A9}
+\definecolor{simplePink}{HTML}{FABEBE}
+\definecolor{simpleApricot}{HTML}{FFD8B1}
+\definecolor{simpleBeige}{HTML}{FFFAC8}
+\definecolor{simpleMint}{HTML}{AAFFC3}
+\definecolor{simpleLavender}{HTML}{E6BEFF}
+\definecolor{simpleWhite}{HTML}{FFFFFF}
 
 \usepackage
         [
@@ -188,11 +212,6 @@
 
 \nottoggle{bwmode}{
     \definecolor{keyword}{RGB}{5,0,111}
-%   \definecolor{keyword2}{RGB}{0, 111, 109}
-%   \definecolor{keyword3}{RGB}{5,0,111}
-%   \definecolor{keyword4}{RGB}{80, 0, 201}
-%   \definecolor{keyword5}{RGB}{80, 0, 201}
-%   \definecolor{keyword6}{RGB}{22, 69, 33}
     \definecolor{string}{RGB}{0,114,0}
     \definecolor{comment}{RGB}{109,109,109}
     \definecolor{listingsbackground}{RGB}{255, 255, 225}
@@ -201,11 +220,6 @@
     \definecolor{alert}{RGB}{244, 0, 68}
 }{
     \definecolor{keyword}{RGB}{0,0,0}
-%   \definecolor{keyword2}{RGB}{0,0,0}
-%   \definecolor{keyword3}{RGB}{0,0,0}
-%   \definecolor{keyword4}{RGB}{0,0,0}
-%   \definecolor{keyword5}{RGB}{0,0,0}
-%   \definecolor{keyword6}{RGB}{0,0,0}
     \definecolor{string}{RGB}{0,0,0}
     \definecolor{comment}{RGB}{109,109,109}
     \definecolor{listingsbackground}{RGB}{255, 255, 255}
@@ -217,11 +231,6 @@
 \lstdefinestyle{basic}{
     basicstyle = \scriptsize \ttfamily,
     keywordstyle = \color{keyword}\bfseries,
-%   keywordstyle=[2]\color{keyword2},
-%   keywordstyle=[3]\color{keyword3},
-%   keywordstyle=[4]\color{keyword4}\bfseries,
-%   keywordstyle=[5]\color{keyword5},
-%   keywordstyle=[6]\color{keyword6}\bfseries,
     stringstyle = \color{string}\bfseries,
     commentstyle = \color{comment},
     morecomment = [l][\color{comment}]{\#},
@@ -233,6 +242,7 @@
     stepnumber = 1,
     numberblanklines = false,
     numbersep = 10pt,
+    framexleftmargin = 20pt,
     frame = shadowbox,
     backgroundcolor = \color{listingsbackground},
     rulesepcolor = \color{listingsrulesep},
@@ -244,14 +254,27 @@
     inputencoding = utf8
 }
 
+\lstdefinestyle{tcolorbox}{
+    basicstyle = \scriptsize \ttfamily,
+    keywordstyle = \color{keyword}\bfseries,
+    stringstyle = \color{string}\bfseries,
+    commentstyle = \color{comment},
+    morecomment = [l][\color{comment}]{\#},
+    breaklines = false,
+    showlines = true,
+    matchrangestart = true,
+    numbers = left,
+    numberstyle = \scriptsize,
+    stepnumber = 1,
+    numberblanklines = false,
+    numbersep = 10pt,
+    framexleftmargin = 20pt,
+    inputencoding = utf8
+}
+
 \lstset{
     language = [ISO]C++,
-    style = inline,
-%   keywords = [2]{w_rc_t, bf_tree_m, generic_page, latch_mode_t, lsn_t, bf_tree_cb_t, sthread_t, btree_page_h, smlevel_0, fixable_page_h, GeneralRecordIds, std},
-%   keywords = [3]{PageID, bf_idx, bf_idx_pair, general_recordid_t},
-%   keywords = [4]{WAIT_IMMEDIATE, WAIT_FOREVER, LATCH_EX, LATCH_NL, INVALID, FOSTER_CHILD, stINUSE},
-%   keywords = [5]{_swizzled, _pid, _buffer, _evictioner, _hashtable, first, second, null, lsn, _pin_cnt, _enable_swizzling},
-%   keywords = [6]{W_DO, RC}
+    style = inline
 }
 
 % Select the chapters (included files) for partial compilation of drafts (better than just commenting \include commands because of .aux-files); omit .tex file-ending here and in each of the \include commands:
