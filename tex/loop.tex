@@ -95,16 +95,10 @@ inline uint32_t spinlockCounter() {
     }
 \begin{centeredshadowboxlisting}
 inline uint32_t moduloCounter() {
-    static std::atomic<uint64_t> lastIndex;
-    while (true) {
-        uint32_t newIndex = lastIndex++
-                          % blockCount;
-        if (newIndex != 0) {
-            return newIndex;
-        } else {
-            continue;
-        }
-    }
+    static std::atomic<uint64_t> lastIndex = 0;
+    static uint32_t moduloDivisor = blockCount
+                                  - 1;
+    return (lastIndex++ % moduloDivisor) + 1;
 }
 \end{centeredshadowboxlisting}
 \end{@empty}
@@ -171,26 +165,15 @@ inline uint32_t lockFreeCounter() {
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:loop-performance}
 
-    Due to the implementation independence of the eviction decisions of LOOP page evictioners, the achieved hit rates achieved in an exemplary DBMS are not required as performance measure for this evaluation. The only performance difference between the different LOOP page evictioners is the overhead imposed by the concurrent counting. Therefore, a microbenchmark measuring only the execution time of the counting is appropriate.
+    Due to the fact that the eviction decisions of LOOP page evictioners is mostly implementation independent, the achieved hit rates achieved in an exemplary DBMS are not required as performance measure for this evaluation. The only performance difference between the different LOOP page evictioners is the overhead imposed by the concurrent counting. Therefore, a microbenchmark measuring only the execution time of the counting is appropriate.
 
-    The variables of the evaluation are the concurrent counter implementation---the alternatives presented in the previous section are evaluated---and the number of threads concurrently incrementing the counter. The smallest ($>0$) and largest integers returned by the counters---representing the smallest and largest buffer pool indexes---do not significantly influence the performance of the LOOP page evictioners. Therefore, this integer interval $\left[1 .. 999\right]$ is a constant in this evaluation.
+    The variables of the evaluation are the concurrent counter implementation---the alternatives presented in the previous section are evaluated---and the number of threads concurrently incrementing the counter. The smallest ($>0$) and largest integers returned by the counters---representing the smallest and largest buffer pool indexes---do not significantly influence the performance of the LOOP page evictioners but when the largest buffer pool index is a power of $2$, the modulo operations of the \emph{modulo counter} and \emph{local modulo counter} are significantly faster. Therefore, this integer interval $\left[1 .. 53467\right]$---where $53467$ is not a power of $2$ because the evaluation should be as general as possible---is a constant in this evaluation.
 
 \subsection[Microbenchmark]{Microbenchmark}
 
     The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a given number of worker threads---each of them calls the evaluated concurrent counter a given number of times (\num{1000000})---and measures the wall time elapsed until all the worker threads finished their operation and joined.
 
-\subsection[System A Configuration]{Configuration of the Used System A}
-
-\begin{@empty}
-    \begin{itemize}
-        \itemsep0em
-        \item \textbf{CPU:} $2 \times $ \emph{Intel® Xeon® Processor X5670} @$6 \times 2.93\text{GHz}$ from early 2010
-        \item \textbf{Main Memory:} $12 \times 8\text{GB} = 96\text{GB}$ of DDR2-SDRAM @$1333\text{MHz}$
-        \item \textbf{OS:} \emph{Ubuntu 18.04}
-    \end{itemize}
-\end{@empty}
-
-\subsection[System B Configuration]{Configuration of the Used System B}
+\subsection[System Configuration]{Configuration of the Used System}
 
 \begin{@empty}
     \begin{itemize}
@@ -204,7 +187,7 @@ inline uint32_t lockFreeCounter() {
 \subsection[Microbenchmark Results]{Microbenchmark Results} \label{subsec:loop-results}
 
 \begin{@empty}
-    Figure \ref{fig:loop_server_performance} shows the LOOP index generation performance of the NUMA system A---figure \ref{fig:loop_desktop_performance} shows the performance of the UMA system B. The LOOP index generation throughput is total number of indexes generated (from all working threads) per time.
+    Figure \ref{fig:loop_desktop_performance} shows the LOOP index generation throughput which is total number of indexes generated (from all working threads) per time.
 
     \nottoggle{bwmode}{
         \tikzset{%
@@ -225,42 +208,10 @@ inline uint32_t lockFreeCounter() {
             lockFree/.style = {color = black!50, mark = square*}
         }
     }
-    
-    \begin{figure}[ht!]
-        \centering
-        \resizebox{\textwidth}{!}{
-            \begin{tikzpicture}[]
-                \begin{axis}[xlabel = {Number of threads},
-                             xlabel near ticks,
-                             xmin = 1,
-                             xmax = 24,
-                             xtick distance = 6,
-                             extra x ticks = {1},
-                             scaled x ticks = false,
-                             ylabel = {$\text{Average index generations }\left[\si{\indexes\per\second}\right]$},
-                             ylabel near ticks,
-                             ymode = log,
-                             scaled y ticks = false,
-                             grid = both,
-                             width = \textwidth,
-                             height = .65\textheight]
 
-                    \addplot[mutex]       table[x = threads, y = throughput] {./data/loop/server_mutex_counter.csv};        \label{pgfplots:server-mutex}
-                    \addplot[spinlock]    table[x = threads, y = throughput] {./data/loop/server_spinlock_counter.csv};     \label{pgfplots:server-spinlock}
-                    \addplot[modulo]      table[x = threads, y = throughput] {./data/loop/server_modulo_counter.csv};       \label{pgfplots:server-modulo}
-                    \addplot[local]       table[x = threads, y = throughput] {./data/loop/server_local_counter.csv};        \label{pgfplots:server-local}
-                    \addplot[localModulo] table[x = threads, y = throughput] {./data/loop/server_local_modulo_counter.csv}; \label{pgfplots:server-local-modulo}
-                    \addplot[lockFree]    table[x = threads, y = throughput] {./data/loop/server_lock_free_counter.csv};    \label{pgfplots:server-lock-free}
-                \end{axis}
-            \end{tikzpicture}
-        }
-        \caption{The throughput of index generations of the evaluated LOOP implementations on system A}
-        \label{fig:loop_server_performance}
-    \end{figure}
+    The \emph{blocking counters}---\emph{mutex counter} \ref{pgfplots:desktop-mutex} and \emph{spinlock counter} \ref{pgfplots:desktop-spinlock}---are the slowest counters when there are multiple working threads. The locking overhead and---for higher numbers of working threads---the lock contention make these concurrent counters up to more than one order of magnitude slower than the \emph{non-blocking counters}. The more optimized mutex, which uses low-overhead busy-waiting (spinlock behavior) in situations of low contention and higher-overhead queuing and context switches in situations of higher contention, can better utilize the available physical CPU cores by suspending waiting threads---and therefore, omitting unnecessary uses of hyper-threading.
 
-    The \emph{blocking counters}---\emph{mutex counter} \ref{pgfplots:server-mutex} and \emph{spinlock counter} \ref{pgfplots:server-spinlock}---are the slowest counters on both systems. The locking overhead and---for higher numbers of working threads---the lock contention make these concurrent counters more than one order of magnitude slower than the \emph{non-blocking counters}. The more optimized mutex, which uses low-overhead busy-waiting (spinlock behavior) in situations of low contention and higher-overhead queuing and context switches in situations of higher contention, can better utilize the available physical CPU cores by suspending waiting threads---and therefore, omitting unnecessary uses of hyper-threading.
-
-    The \emph{non-blocking counters}---\emph{modulo counter} \ref{pgfplots:server-modulo} and \emph{lock-free counter} \ref{pgfplots:server-lock-free}---perform almost identical to each other. In situations without contention, the only serious overhead of those counters are the conditional branch operations. But most of the times, a modern CPU can correctly predict the targets of these branches. But when there are multiple working threads counting, the atomic operations on the counter variable are the major overhead slowing down the \emph{non-blocking counters} compared to \emph{local counters}.
+    The \emph{non-blocking counters}---\emph{modulo counter} \ref{pgfplots:desktop-modulo} and \emph{lock-free counter} \ref{pgfplots:desktop-lock-free}---perform almost identical to each other. In situations without contention, the \emph{modulo counter} is identical to the \emph{local modulo counter} but the \emph{lock-free counter} suffers from the overhead due to the conditional branch operation. But most of the times, a modern CPU can correctly predict the targets of these branches. But when there are multiple working threads counting, the atomic operations on the counter variable are the major overhead slowing down the \emph{non-blocking counters} compared to \emph{local counters}.
 
     \begin{figure}[ht!]
         \centering
@@ -290,11 +241,11 @@ inline uint32_t lockFreeCounter() {
                 \end{axis}
             \end{tikzpicture}
         }
-        \caption{The throughput of index generations of the evaluated LOOP implementations on system B}
+        \caption{The throughput of index generations of the evaluated LOOP implementations}
         \label{fig:loop_desktop_performance}
     \end{figure}
 
-    Obviously, the \emph{local counters}---\emph{local counter} \ref{pgfplots:server-local} and \emph{local modulo counter} \ref{pgfplots:server-local-modulo}---are the fastest counters because they completely omit any synchronization between the counting threads. While the other counters count based on a global counter, these ones count based on local counters, resulting in a thread-wise round-robin selection of eviction candidates instead of a global round-robin selection of eviction candidates. The independence of the threads makes these counters very scalable as long as there are hardware threads available. This results in a performance advantage of up to almost two orders of magnitude compared to the \emph{non-blocking counters}. The significantly higher performance of the \emph{local counter} in comparison to the \emph{local modulo counter} is the result of the slow modulo operation when the divisor is not a power of two. The branch target of the conditional branch in the \emph{local counter} is predicted correctly most of the times, making its overhead negligible.
+    Obviously, the \emph{local counters}---\emph{local counter} \ref{pgfplots:desktop-local} and \emph{local modulo counter} \ref{pgfplots:desktop-local-modulo}---are the fastest counters because they completely omit any synchronization between the counting threads. While the other counters count based on a global counter, these ones count based on local counters, resulting in a thread-wise round-robin selection of eviction candidates instead of a global round-robin selection of eviction candidates. The independence of the threads makes these counters very scalable as long as there are hardware threads available. This results in a performance advantage of up to almost two orders of magnitude compared to the \emph{non-blocking counters}. The significantly higher performance of the \emph{local counter} in comparison to the \emph{local modulo counter} is the result of the slow modulo operation when the divisor is not a power of two. The branch target of the conditional branch in the \emph{local counter} is predicted correctly most of the times, making its overhead negligible.
 \end{@empty}
 
 \section{Conclusion}
