@@ -2,49 +2,45 @@
 
 \section[Purpose]{Purpose}
 
-    The buffer manager of a DBMS needs to evict pages from buffer frames when currently not buffered pages need to be fetched from the database while there are no more free buffer frames. Every buffer manager got a page evictioner---implementing one of the many page eviction algorithms developed since the 1960s---for that purpose.
+    The buffer manager of a DBMS must evict pages from buffer frames if currently not buffered pages need to be fetched from the DB while there are no more free buffer frames. For this purpose, each buffer manager got a page eviction module---implementing one of the many page eviction algorithms developed since the 1960s.
 
-    According to Belady's classification in \cite{Belady:1966}, the RANDOM eviction algorithm is the most representative algorithm in his \textit{Class 1} of page eviction algorithms. Those \textit{Class 1} page eviction algorithms do not use any information about the usage of a buffered page but just apply a static rule for the eviction decision. According to the newer classification of Effelsberg and Härder in \cite{Effelsberg:1984}, the RANDOM eviction algorithm is the only algorithm in the class of algorithms using neither the age of a buffered page nor the references of it for the eviction decision.
+    According to Belady's classification in \cite{Belady:1966}, the RANDOM eviction algorithm is the most representative algorithm in his \textit{Class 1} of page eviction algorithms. These \textit{Class 1} page eviction algorithms do not use information about the usage of a buffered page but, but simply apply a static rule for the eviction decision. According to the more recent classification by Effelsberg and Härder in \cite{Effelsberg:1984}, the RANDOM eviction algorithm is the only algorithm in the class of algorithms that does neither use the age of a buffered page nor the references of it for the eviction decision.
 
-    The RANDOM strategy is the simplest page eviction strategy possible resulting in a low overhead and bad hit rates.
+    The RANDOM strategy is the simplest possible page eviction strategy, resulting in a low overhead and poor hit rates.
 
 \section[Compared Pseudorandom Number Generators]{Compared Pseudorandom Number Generators}
 
-    The only operation performed by the RANDOM page evictioner to decide on the page to evict from the buffer pool is the generation of a pseudorandom number in the range of buffer frame indexes. The database page contained in the selected buffer frame is evicted afterwards.
+    The only operation performed by a RANDOM page eviction module to decide which page to evict from the buffer pool is the generation of a pseudorandom number in the range of buffer frame indexes. The DB page contained in the selected buffer frame is then evicted.
 
-    There are many different classes of pseudorandom number generators (\textbf{PRNG}). Some of them provide pseudorandom numbers of high randomness---appropriate for cryptographic applications---others take only few CPU cycles and almost no memory to generate a random number.
+    There are many different classes of pseudorandom number generators (\textbf{PRNG}). Some of them provide pseudorandom numbers of high randomness---suitable for cryptographic applications---others require only few CPU cycles and almost no memory to generate a random number.
 
-    Due to the enormous number of PRNG described in literature, an exhaustive comparison of PRNG for the use in RANDOM page evictioners is not possible in this context. Therefore, only a small selection of PRNG---mostly from the \textit{C++ Standard Library}\footnotemark[1] and the \textit{Boost Random Number Library}\footnotemark[2] (part of the \textit{Boost C++ Libraries}\footnotemark[3])---were selected for this evaluation.
-
-    \footnotetext[1]{\url{https://en.cppreference.com/w/cpp}}
-    \footnotetext[2]{\url{https://www.boost.org/doc/libs/release/doc/html/boost_random.html}}
-    \footnotetext[3]{\url{https://www.boost.org/}}
+    Due to the enormous number of PRNGs described in literature, an exhaustive comparison of PRNGs for use in RANDOM page eviction is not possible in this context. Therefore only a selection of PRNGs---mostly from the \textit{C++ Standard Library}\footnote{\url{https://en.cppreference.com/w/cpp}} and the \textit{Boost Random Number Library}\footnote{\url{https://www.boost.org/doc/libs/release/doc/html/boost_random.html}} (part of the \textit{Boost C++ Libraries}\footnote{\url{https://www.boost.org/}})---was selected for this evaluation.
 
 \subsection[Linear Congruential Generator (LCG) -- 1958]{Linear Congruential Generator (LCG) -- 1958} \label{subsec:lcg}
 
-    The \emph{linear congruential generator}---a generalization of the earlier proposed \emph{Lehmer generator}---is a family of PRNG that was independently proposed by W. E. Thomson in \cite{Thomson:1958} and by A. Rotenberg in \cite{Rotenberg:1960}.
+    The \emph{linear congruential generator}---a generalization of the earlier proposed \emph{Lehmer generator}---is a family of PRNGs proposed independently by W. E. Thomson in \cite{Thomson:1958} and by A. Rotenberg in \cite{Rotenberg:1960}.
 
     A LCG is defined by the following recurrence relation $X$:
     \begin{equation*}
         X_{n + 1} = \left(a \cdot X_n + c\right) \bmod m \quad n \geq 0
     \end{equation*}
-    In this definition, $a \in \left(0, m\right)$ is the multiplier, $c \in \left[0, m\right)$ is the increment, $m \in \left(0, \infty\right)$ is the modulus and $X_0 \in \left[0, m\right)$ is the seed.
+    In this definition, $a \in \left(0.. m\right)$ is the multiplier, $c \in \left[0.. m\right)$ is the increment, $m \in \left(0.. \infty\right)$ is the modulus and $X_0 \in \left[0.. m\right)$ is the seed.
 
-    The following members of the LCG family of PRNG that are not members of specializations defined in subsections were compared:
+    The following members of the LCG family of PRNGs, which do not belong to specializations defined in subsections, were compared:
     \begin{itemize}
 		\itemsep0em
-        \item \textbf{rand}: $a = 0x41C64E6D$, $c = 0x3039$, $m = 2^{31}$ if using \textit{GNU C Library}\footnote[4]{\url{https://www.gnu.org/software/libc/}}
+        \item \textbf{rand}: $a = 0x41C64E6D$, $c = 0x3039$, $m = 2^{31}$ if using \textit{GNU C Library}\footnote{\url{https://www.gnu.org/software/libc/}}
         \item \textbf{rand48}: $a = 0x5DEECE66D$, $c = 0xB$, $m = 2^{48}$
         \item \textbf{Kreutzer1986}: Buffers 97 random numbers of a LCG with $a = 0x556$, $c = 0x24D69$, $m = 0xAE529$ and returns them shuffled according to an algorithm proposed by Carter Bays and S. D. Durham in \cite{Bays:1976}. This was proposed by Wolfgang Kreutzer in \cite{Kreutzer:1986}.
     \end{itemize}
 
 \subsubsection[Lehmer Generator (MCG) -- 1949]{Lehmer Generator -- 1949} \label{subsubsec:mcg}
 
-    The \emph{Lehmer generator} (also known as \emph{multiplicative congruential generator}) is the earliest family of PRNG of ``usable'' quality, proposed by Derrick H. Lehmer in \cite{Lehman:1951} in 1949.
+    The \emph{Lehmer generator} (also known as \emph{multiplicative congruential generator}) is the earliest family of PRNGs of ``usable'' quality, proposed by Derrick H. Lehmer in \cite{Lehman:1951} in 1949.
 
-    It is a specialization of the later proposed \emph{LCG} with $c = 0$.
+    It is a specialization of the later proposed LCG with $c = 0$.
 
-    The following members of the MCG family of PRNG were compared:
+    The following members of the MCG family of PRNGs were compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{MCG128}:     $a = 0x1168C7BF168D765C661FD0407A968ADD$, $m = 2^{64} - 1$, \SI{128}{\bit} state
@@ -54,9 +50,9 @@
 
 \subsubsection[Park-Miller Generator -- 1988]{Park-Miller Generator -- 1988} \label{subsubsec:minstd}
 
-    The \emph{Park-Miller generator} (now known as MINSTD) is a set of parameters for the \emph{Lehmer generator} proposed by Stephen K. Mark and Keith W. Miller in \cite{Park:1988}. After criticism by George Marsaglia and Stephen Sullivan, they proposed a changed set of parameters in \cite{Park:1993}.
+    The \emph{Park-Miller generator} (now known as MINSTD) is a set of parameters for the \emph{Lehmer generator} proposed by Stephen K. Mark and Keith W. Miller in \cite{Park:1988}. After the criticism from George Marsaglia and Stephen Sullivan they proposed a modified set of parameters in \cite{Park:1993}.
 
-    In their initial proposal, the parameters were $a = 16807$ and $m = 2^{31} - 1$. In their later proposal, they used $a = 48271$ instead.
+    In their initial proposal the parameters were $a = 16807$ and $m = 2^{31} - 1$. In their later proposal they used $a = 48271$ instead.
 
     The following Park-Miller generators were compared:
     \begin{itemize}
@@ -70,16 +66,16 @@
 
     The \emph{MIXMAX generator} is a \emph{matrix linear congruential generator} proposed by G. K. Savvidy and N. G. Ter-Arutyunyan-Savvidy in \cite{Savvidy:1991}.
 
-    In contrast to a LCG, a matrix LCG uses a $N{\times}N$-matrix of multipliers $A$ instead of a multiplier $a$.
+    Unlike an LCG, a matrix LCG uses a $N{\times}N$-matrix of multipliers $A$ instead of a multiplier $a$:
     \begin{equation*}
         a'_i = \begin{cases}
                    \left(\sum_{j = 1}^{N} A_{ij} \cdot a_j\right) \bmod m + s \cdot a_2 & \text{if } i = 3 \\
                    \left(\sum_{j = 1}^{N} A_{ij} \cdot a_j\right) \bmod m               & \text{else}
                \end{cases}
     \end{equation*}
-    In this definition, $s \in \mathbb{Z}$ is a small ``magic'' integer, $m \in \left(0, \infty\right)$ is the modulus and the initial $N$-dimensional vector $a$ is the seed.
+    In this definition, $s \in \mathbb{Z}$ is a small ``magic'' integer, $m \in \left(0.. \infty\right)$ is the modulus and the initial $N$-dimensional vector $a$ is the seed.
 
-    The following members of the MIXMAX family of PRNG was compared:
+    The following members of the MIXMAX family of PRNGs was compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{MixMax2.0}: $N = 17$, $s = 0$, $m = 2^{36} + 1$
@@ -89,9 +85,9 @@
 
     The \emph{permuted congruential generator} is a modified \emph{linear congruential generator} proposed by Melissa E. O'Neill in \cite{ONeill:2014}.
 
-    In contrast to a typical LCG, the PCG state has double the width of its output, the modulus $m$ is $m = 2^k$ for $k \in \mathbb{N}$ and the output is generated by a state-defined bit-wise rotation of the state.
+    In contrast to a typical LCG, the PCG state has twice the width of its output, the modulus $m$ is $m = 2^k$ for $k \in \mathbb{N}$ and the output is generated by a state-defined bitwise rotation of the state.
 
-    The following members of the PCG family of PRNG were compared:
+    The following members of the PCG family of PRNGs were compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{PCG32}:           $a = 0x5851F42D4C957F2D$, $c = 0x14057B7EF767814F$, $m = 2^{31} - 1$, \SI{64}{\bit} state
@@ -109,15 +105,15 @@
 
 \subsection[Lagged Fibonacci Generator (LFG) -- 1958]{Lagged Fibonacci Generator (LFG) -- 1958} \label{subsec:lfg}
 
-    The \emph{lagged Fibonacci generator} is a family of PRNG---based on the generalization of the Fibonacci sequence---proposed (but never published) by G. J. Mitchell and D. P. Moore in 1958.
+    The \emph{lagged Fibonacci generator} is a family of PRNGs---based on the generalization of the Fibonacci sequence---proposed (but never published) by G. J. Mitchell and D. P. Moore in 1958.
 
     A LFG is defined by the following recurrence relation $X$:
     \begin{equation*}
         X_n = \left(X_{n - j} + X_{n - k}\right) \mod m, n \geq j \land n \geq k
     \end{equation*}
-    In this definition, $j = 24$ and $k = 55$ are the lags of the original proposal and $\left(X_0, ..., X_{\max\left(j, k\right)}\right)$ is the seed to be seeded based on e.g. another random number generator.
+    In this definition $j = 24$ and $k = 55$ are the lags of the original proposal and $\left(X_0, ..., X_{\max\left(j, k\right)}\right)$ is the seed to be seeded e.g. based on another random number generator.
 
-    The following (floating-point) members of the LFG family of PRNG that are not members of specializations defined in subsections were compared:
+    The following (floating-point) members of the LFG family of PRNGs, which do not belong to the specializations defined in subsections, were compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{LaggedFibonacci607}: $j = 607$, $k = 273$, $m = 1$
@@ -136,7 +132,7 @@
                                combined with a simple arithmetic sequence as proposed by G. Marsaglia et al. in \cite{Marsaglia:1990} and modified by F. James in \cite{James:1990}
     \end{itemize}
 
-    Many used parameters (lags) were proposed by R. P. Brent in \cite{Brent:1992}.
+    Many parameters (lags) used were suggested by R. P. Brent in \cite{Brent:1992}.
 
 \subsubsection[Subtract-With-Borrow (SWB) -- 1991]{Subtract-With-Borrow (SWB) -- 1991} \label{subsubsec:swb}
 
@@ -149,9 +145,9 @@
                                              \left(x_{j + 1 - k} - x_1 - c + b, 1\right) & \text{if } x_{j + 1 - k} - x_1 - c < 0
                                          \end{cases}
     \end{equation*}
-    In this definition, $X_n = f\left(X_n\right)$ is the generated sequence. The lags $j$, $k$ and the base $b$ need to be chosen appropriately with $j > k$ and the initial seed vector $\left(x_1, ..., x_j, c\right)$ needs to be seeded based on e.g. another random number generator.
+    In this definition $X_n = f\left(X_n\right)$ is the generated sequence. The lags $j$, $k$ and the base $b$ must be chosen appropriately with $j > k$ and the initial seed vector $\left(x_1, ..., x_j, c\right)$ must be set e.g. based on another random number generator.
 
-    The following members of the SWB family of PRNG were compared:
+    The following members of the SWB family of PRNGs were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{Ranlux24Base}:    $j = 24$, $k = 10$, $b = 2^{24} - 1$
@@ -168,24 +164,27 @@
         \item \textbf{Ranlux64\_4\_01}: floating-point version of \textit{Ranlux64\_4}
     \end{itemize}
 
-    The \textit{Ranlux} family of SWB PRNG was proposed by M. Lüscher in \cite{Luescher:1993}.
+    The \textit{Ranlux} family was proposed by M. Lüscher in \cite{Luescher:1993}.
 
 \subsection[Linear Feedback Shift Register (LFSR) -- 1965]{Linear Feedback Shift Register (LFSR) -- 1965} \label{subsec:lfsr}
 
-    The \emph{linear feedback shift register} PRNG is a family of PRNG proposed by Robert C. Tausworthe in \cite{Tausworthe:1965}.
+    The \emph{linear feedback shift register} PRNG is a family of PRNGs proposed by Robert C. Tausworthe in \cite{Tausworthe:1965}.
 
-    LSFR generators work on a bit sequence $a = \left\{a_k\right\}$ which is defined as follows:
+    LSFR PRNGs operate on a bit sequence $a = \left\{a_k\right\}$, defined as follows:
     \begin{equation*}
         a_k = c_1 \cdot a_{k - 1} + c_2 \cdot a_{k - 2} + ... + c_n \cdot a_{k - n} \mod 2
     \end{equation*}
     The parameters $c_i \in \left\{0, 1\right\}$ with $1 \leq i \leq n$ are fixed and $n$ is the bit width of the state.
+
     Based on this state, the random number $y_k$ is generated as follows:
     \begin{equation*}
         y_k = \sum_{t = 1}^{L} 2^{-t} \cdot a_{qk + r - t}
     \end{equation*}
-    Here, $L \leq n$ represents the bit width of the output random number, $q$ is the number of bit between two successive $y_k$ in $a_k$ ($q \geq L$) and $r$ is a random number in the state range $\left[0, 2^n - 1\right]$.
+    Here $L \leq n$ represents the bit width of the random number output, $q$ is the number of bit between two successive $y_k$ in $a_k$ ($q \geq L$) and $r$ is a random integer in the state interval $\left[0 .. 2^n - 1\right]$.
 
-    In \cite{LEcuyer:1996}, Pierre L'Ecuyer proposed a specific PRNG as the combination of three LSFR generators using bitwise XOR operations. This LFSR PRNG was compared:
+    In \cite{LEcuyer:1996}, Pierre L'Ecuyer proposed a specific PRNG as the combination of three LSFR generators using bitwise XOR operations.
+
+    The following LFSR PRNGs were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{Taus88}:
@@ -200,11 +199,11 @@
 
 \subsubsection[Mersenne Twister (MT) -- 1998]{Mersenne Twister (MT) -- 1998} \label{subsubsec:mt}
 
-    The \emph{Mersenne Twister}---a twisted \emph{generalized feedback shift register} (GFSR) operating on a state matrix---was proposed by M. Matsumoto and T. Nishimura in \cite{Matsumoto:1998}. It is by far the most commonly used general-purpose PRNG.
+    The \emph{Mersenne Twister}---a twisted \emph{generalized feedback shift register} (\textbf{GFSR}) operating on a state matrix---was proposed by M. Matsumoto and T. Nishimura in \cite{Matsumoto:1998}. It is by far the most widely used general-purpose PRNG.
 
-    A more detailed description of the design and internals of the MT is unfortunately beyond the scope of this thesis.
+    A more detailed description of the design and internals of the MT would unfortunately go beyond the scope of this thesis.
 
-    The following Mersenne Twisters---all proposed in the initial proposal of MT \cite{Matsumoto:1998}---were compared:
+    The following MTs---all in the original proposal of MT---were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{MT19937}: Mersenne prime is $2^{19937} - 1$
@@ -214,9 +213,9 @@
 
 \subsubsection[Xorshift -- 2003]{Xorshift -- 2003} \label{subsubsec:xorshift}
 
-    The \emph{xorshift}---a sub-type of the \emph{linear feedback shift register} implemented purely using fast bitwise XOR and shift operations---was proposed by George Marsaglia in \cite{Marsaglia:2003}.
+    The \emph{xorshift}---a subtype of the \emph{linear feedback shift register}, which was implemented purely using fast bitwise XOR and shift operations---was proposed by George Marsaglia in \cite{Marsaglia:2003}.
 
-    The following implementation of a \SI{32}{\bit} \emph{xorshift} was given in \cite{Marsaglia:2003}:
+    The following implementation of a \SI{32}{\bit} xorshift was given in \cite{Marsaglia:2003}:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -243,7 +242,7 @@ uint32_t xorshift32() {
 
 \subsubsection[Well Equidistributed Long-Period Linear (WELL) -- 2006]{Well Equidistributed Long-Period Linear (WELL) -- 2006} \label{subsubsec:well}
 
-    The \emph{well equidistributed long-period linear} generators---a family of PRNG of the form of GFSR and MT generators---was proposed by François Panneton et al. in \cite{Panneton:2006}.
+    The \emph{well equidistributed long-period linear} generators---a family of PRNGs in the form of GFSR and MT generators---was proposed by François Panneton et al. in \cite{Panneton:2006}.
 
     The WELL algorithm is as follows:
     \begin{algorithmic}[]
@@ -260,9 +259,9 @@ uint32_t xorshift32() {
         \State $v_{i + 1, 0} \leftarrow z_4$
         \State \textbf{return} $y_i = v_{i, 0}$
     \end{algorithmic}
-    In the algorithm, $w$ is the bit-width of the random numbers output by the WELL algorithm, $r \in \left(0, \infty\right)$ and $p \in \left[0, w\right)$ are unique integers and $m_p \in \left(0, r\right)$ are bitmasks. The bit-width of the elements of the $r$-dimensional state vector $x_i$ is $w$ and the last $p$ bits of the last element of this vector are $0$. Possible values for the transformation $w{\times}w$-matrices $T_0, ..., T_7$ and further limitations to the parameters are given in \cite{Panneton:2006}.
+    In the algorithm $w$ is the bit-width of the random numbers output by the WELL algorithm, $r \in \left(0.. \infty\right)$ and $p \in \left[0.. w\right)$ are unique integers and $m_p \in \left(0.. r\right)$ are bitmasks. The bit-width of the elements of the $r$-dimensional state vector $x_i$ is $w$ and the last $p$ bits of the last element of this vector are $0$. Possible values for the transformation $w{\times}w$-matrices $T_0, ..., T_7$ and further limitations to the parameters are given in \cite{Panneton:2006}.
 
-    Shin Harase proposed a tempering method in \cite{Harase:2009} to make some WELL generators maximally equidistributed.
+    Shin Harase suggested a tempering method in \cite{Harase:2009} to make some WELL generators maximally equidistributed.
 
     The following WELL generators were compared:
     \begin{itemize}
@@ -285,9 +284,9 @@ uint32_t xorshift32() {
 
 \subsubsection[Xoshiro -- 2018]{Xoshiro -- 2018} \label{subsubsec:xoshiro}
 
-    The \emph{xoshiro}---a \emph{linear feedback shift register} generator implemented using XOR, shift and rotate operations---was---together with \emph{xoroshiro}---proposed by David Blackman and Sebastiano Vigna in \cite{Blackman:2018}.
+    The \emph{xoshiro}---a \emph{linear feedback shift register} generator implemented using XOR, shift and rotate operations---was---along with xoroshiro---proposed by David Blackman and Sebastiano Vigna in \cite{Blackman:2018}.
 
-    The following (slightly modified) implementation of a \SI{32}{\bit} \emph{xoshiro} with a \SI{128}{\bit} state was given in \cite{Blackman:2018}:
+    The following (slightly modified) implementation of a \SI{32}{\bit} xoshiro with a \SI{128}{\bit} state was given in \cite{Blackman:2018}:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -308,16 +307,16 @@ void xoshiro128() {
 }
 \end{centeredshadowboxlisting}
 \end{@empty}
-    \textcolor{black!75}{The initial \lstinline|s0_|, \lstinline|s1_|, \lstinline|s2_| and \lstinline|s3_| which are the state---hard-coded in this example to 0x01d353e5f3993bb1, 0xf7381bed96327640, 0xfdfcaa91110765b5 and 0x0---should be randomly seeded in any real use case.} For the \SI{32}{\bit} case, the authors proposed shift and rotate values to be $\texttt{\small a} = 9$ and $\texttt{\small b} = 11$.
+    \textcolor{black!75}{The initial \lstinline|s0_|, \lstinline|s1_|, \lstinline|s2_| and \lstinline|s3_|, which are the state---hard-coded in this example to 0x01d353e5f3993bb1, 0xf7381bed96327640, 0xfdfcaa91110765b5 and 0x0---should be randomly seeded in any real use case.} For the \SI{32}{\bit} case, the authors suggested shift and rotate values to be $\texttt{\small a} = 9$ and $\texttt{\small b} = 11$.
 
-    It can be easily seen in the implementation, that \emph{xoshiro} does not define the generation of a pseudorandom number from its state. The authors proposed four scramblers to be used with \emph{xoshiro} (and \emph{xoroshiro}) where the two more advanced ones try to eliminate linear artifacts from the state.
+    It is easy to see in the implementation that xoshiro does not define the generation of a pseudorandom number from its state. The authors proposed four scramblers to be used with xoshiro (and xoroshiro) where the two more advanced ones try to eliminate linear artifacts from the state.
     
     \begin{itemize}
         \itemsep0em
         \item[\textbf{$\mathbf{+}$ scrambler}]  The simple $\mathbf{+}$ scrambler returns just the sum of two of the state words (e.g. \lstinline|return s0_ + s3_|).
-        \item[\textbf{$\mathbf{*}$ scrambler}]  The not any less simple $\mathbf{*}$ scrambler returns just the product of one of the state words with a fixed, odd multiplier (e.g. \lstinline|return s1_ + mult|).
-        \item[\textbf{$\mathbf{++}$ scrambler}] The $\mathbf{++}$ scrambler first adds up two of the state words, rotates the sum to the left by \lstinline|r| positions and returns the sum of this rotated sum and the first of the two state words used in the first sum (e.g. \lstinline{return ((s0_+s3_) << r) | ((s0_+s3_) >> (32-r)) + s0_}). The authors propose \lstinline|r = 7| in the \SI{32}{\bit} case.
-        \item[\textbf{$\mathbf{**}$ scrambler}] The $\mathbf{**}$ scrambler first multiplies one of the state words with a fixed, odd multiplier \lstinline|s|, rotates the product to the left by \lstinline|r| positions and returns the product of this rotated product and another fixed, odd multiplier \lstinline|t| (e.g. \lstinline{return ((s1_*s) << r) | ((s1_*s) >> (32-r)) * t}). The authors propose \lstinline|s = 5|, \lstinline|r = 7| and \lstinline|t = 9| in the \SI{32}{\bit} case.
+        \item[\textbf{$\mathbf{*}$ scrambler}]  The not less simple $\mathbf{*}$ scrambler returns just the product of one of the state words with a fixed, odd multiplier (e.g. \lstinline|return s1_ + mult|).
+        \item[\textbf{$\mathbf{++}$ scrambler}] The $\mathbf{++}$ scrambler first adds two of the state words, rotates the sum by \lstinline|r| positions to the left and returns the sum of this rotated sum and the first of the two state words used in the first sum (e.g. \lstinline{return ((s0_+s3_) << r) | ((s0_+s3_) >> (32-r)) + s0_}). The authors propose \lstinline|r = 7| in the \SI{32}{\bit} case.
+        \item[\textbf{$\mathbf{**}$ scrambler}] The $\mathbf{**}$ scrambler first multiplies one of the state words by a fixed, odd multiplier \lstinline|s|, rotates the product by \lstinline|r| positions to the left and returns the product of this rotated product and another fixed, odd multiplier \lstinline|t| (e.g. \lstinline{return ((s1_*s) << r) | ((s1_*s) >> (32-r)) * t}). The authors propose \lstinline|s = 5|, \lstinline|r = 7| and \lstinline|t = 9| in the \SI{32}{\bit} case.
     \end{itemize}
 
     The following xoshiro generators were compared:
@@ -331,7 +330,7 @@ void xoshiro128() {
 
     The \emph{xoroshiro}---another \emph{linear feedback shift register} generator implemented using XOR, shift and rotate operations---was proposed by David Blackman and Sebastiano Vigna in \cite{Blackman:2018}.
 
-    The following (slightly modified) implementation of a \SI{64}{\bit} \emph{xoroshiro} with a \SI{128}{\bit} state was given in \cite{Blackman:2018}:
+    The following (slightly modified) implementation of a \SI{64}{\bit} xoroshiro with a \SI{128}{\bit} state was given in \cite{Blackman:2018}:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -349,7 +348,7 @@ void xoroshiro128() {
 \end{@empty}
     \textcolor{black!75}{The initial \lstinline|s0_| and \lstinline|s1_| which are the state---hard-coded in this example to 0xc1f651c67c62c6e0 and 0x30d89576f866ac9f---should be randomly seeded in any real use case.} For the \SI{64}{\bit} case, the authors proposed shift and rotate values to be $\texttt{\small a} = 24$, $\texttt{\small b} = 16$ and $\texttt{\small c} = 37$.
 
-    For the generation of pseudorandom numbers from the states of a \emph{xoroshiro} generator, the scramblers $\mathbf{+}$, $\mathbf{*}$, $\mathbf{++}$ and $\mathbf{**}$, that are also used for \emph{xoshiro}, are used. The details of these scramblers are described in Subsection \ref{subsubsec:xoshiro}.
+        To generate pseudo-random numbers from the states of a xoroshiro generator, the scramblers $\mathbf{+}$, $\mathbf{*}$, $\mathbf{++}$ and $\mathbf{**}$, which are also used for xoshiro, are used. The details of these scramblers are described in the subsection \ref{subsubsec:xoshiro}.
 
     The following xoroshiro generators were compared:
     \begin{itemize}
@@ -362,34 +361,34 @@ void xoroshiro128() {
 
 \subsection[Inversive Congruential Generator (ICG) -- 1986]{Inversive Congruential Generator (ICG) -- 1986} \label{subsec:icg}
 
-    The \emph{inversive congruential generator} is a family of PRNG proposed by Jürgen Eichenauer and Jürgen Lehn in \cite{Eichenauer:1986}.
+    The \emph{inversive congruential generator} is a family of PRNGs proposed by Jürgen Eichenauer and Jürgen Lehn in \cite{Eichenauer:1986}.
 
-    A ICG is defined by the following recurrence relation $X$:
+    An ICG is defined by the following recurrence relation $X$:
     \begin{equation*}
         X_{n + 1} = \begin{cases}
                         \left(a \cdot X_n^{-1} + b\right) \bmod p & \text{if } X_n \geq 1 \\
                         b                                         & \text{else}
                     \end{cases}
     \end{equation*}
-    In this definition, $a \in \mathbb{N}$ is the multiplier, $b \in \mathbb{N}$ is the increment, $p$ is the prime modulus and $X_0 \in \left[0, p\right)$ is the seed. $X_n^{-1}$ is the multiplicative inverse of $X_n$ in the finite field $GF\left(p\right)$.
+    In this definition $a \in \mathbb{N}$ is the multiplier, $b \in \mathbb{N}$ is the increment, $p$ is the prime modulus and $X_0 \in \left[0.. p\right)$ is the seed. $X_n^{-1}$ is the multiplicative inverse of $X_n$ in the finite field $GF\left(p\right)$.
 
-    The following member of the ICG family of PRNG was compared:
+    The following member of the ICG family of PRNGs was compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{Hellekalek1995}: $a = 0x238E$, $b = 0x7DCD313A$, $p = 0x7FFFFFFF$ as proposed by Peter Hellekalek in \cite{Hellekalek:1995}
     \end{itemize}
 
-\subsection[Ranshi -- 1995]{ranshi -- 1995} \label{subsec:ranshi}
+\subsection[Ranshi -- 1995]{Ranshi -- 1995} \label{subsec:ranshi}
 
     The \emph{ranshi} algorithm is a PRNG proposed by F. Gutbrod in \cite{Gutbrod:1995}.
 
-    The idea behind the algorithm is a physical system made of a number of black balls each with a position and a spin (state of the PRNG). A red ball---having also a spin and a position---colliding with the black balls is used to generate pseudorandom numbers.
+    The idea behind the algorithm is a physical system consisting of a number of black balls, each of which has a position and a spin (state of the PRNG). A red ball---also having a spin and a position---colliding with the black balls is used to generate pseudorandom numbers.
 
 \subsection[Gjrand -- 2005]{Gjrand -- 2005} \label{subsec:gjrand}
 
-    The \emph{gjrand} algorithm is based on a random invertible mapping\footnote[5]{\url{http://www.pcg-random.org/posts/random-invertible-mapping-statistics.html}} of addition, XOR and rotate operations. This family of PRNG was proposed by David Blackman\footnote[6]{\url{http://gjrand.sourceforge.net/}}.
+    The \emph{gjrand} algorithm is based on a random, invertible mapping\footnote{\url{http://www.pcg-random.org/posts/random-invertible-mapping-statistics.html}} of addition, XOR and rotate operations. It was proposed by David Blackman\footnote{\url{http://gjrand.sourceforge.net/}}.
 
-    The following member of the gjrand family of PRNG was compared:
+    The following member of the gjrand family of PRNGs was compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{gjrand32}: \SI{32}{\bit} PRNG with \SI{128}{\bit} state, parameters from the author
@@ -397,9 +396,9 @@ void xoroshiro128() {
 
 \subsection[A Small Noncryptographic PRNG (JSF) -- 2007]{A Small Noncryptographic PRNG (JSF) -- 2007} \label{subsec:jsf}
 
-    The \emph{JSF} algorithm is based on a reversible, nonlinear function where all internal state bits affect one another of addition, XOR, rotate and conditional branch operations. This family of PRNG was proposed by Bob Jenkins\footnote[7]{\url{http://burtleburtle.net/bob/rand/smallprng.html}}.
+    The \emph{JSF} algorithm is based on a reversible, non-linear function in which all internal state bits affect one another using addition, XOR, rotate and conditional branch operations. It was proposed by Bob Jenkins\footnote{\url{http://burtleburtle.net/bob/rand/smallprng.html}}.
 
-    The following implementation (with \lstinline|b_ = c_ = d_| properly seeded) of a \SI{32}{\bit} \emph{JSF} was used:
+    The following implementation (with \lstinline|b_ = c_ = d_| properly seeded) of a \SI{32}{\bit} JSF was used:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -422,7 +421,7 @@ uint32_t jsf32() {
 \end{centeredshadowboxlisting}
 \end{@empty}
 
-    The following members of the JSF family of PRNG were compared:
+    The following members of the JSF family of PRNGs were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{JSF32n}: \lstinline|p = 27|, \lstinline|q = 17|, \lstinline|r = 0|
@@ -431,9 +430,9 @@ uint32_t jsf32() {
 
 \subsection[SFC -- 2010]{SFC -- 2010} \label{subsec:sfc}
 
-    The \emph{SFC} algorithm is based on a random invertible mapping\footnotemark[5] of addition, XOR, shift and rotate operations. This family of PRNG was proposed by Chris Doty-Humphrey as part of his PractRand\footnote[8]{\url{http://pracrand.sourceforge.net/}} statistical test and PRNG library.
+    The \emph{SFC} algorithm is based on a random, invertible mapping\footnote{\url{http://www.pcg-random.org/posts/random-invertible-mapping-statistics.html}} of addition, XOR, shift and rotate operations. It was proposed by Chris Doty-Humphrey as part of his PractRand\footnote{\url{http://pracrand.sourceforge.net/}} statistical test and PRNG library.
 
-    The following implementation (with \lstinline|a_|, \lstinline|b_| and \lstinline|c_| properly seeded) of a \SI{32}{\bit} \emph{SFC} was used:
+    The following implementation (with \lstinline|a_|, \lstinline|b_| and \lstinline|c_| properly seeded) of a \SI{32}{\bit} SFC was used:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -453,7 +452,7 @@ uint32_t sfc32() {
 \end{centeredshadowboxlisting}
 \end{@empty}
 
-    The following member of the SFC family of PRNG was compared:
+    The following member of the SFC family of PRNGs was compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{SFC32}: \lstinline|p = 21|, \lstinline|q = 9|, \lstinline|r = 3|
@@ -461,21 +460,21 @@ uint32_t sfc32() {
 
 \subsection[Counter-Based Random Number Generator (CBRNG) -- 2011]{Counter-Based Random Number Generator (CBRNG) -- 2011} \label{subsec:cbrng}
 
-    The \emph{counter-based random number generator} is a family of PRNG proposed by J. Salmon et al. in \cite{Salmon:2011}.
+    The \emph{counter-based random number generator} is a family of PRNGs proposed by J. Salmon et al. in \cite{Salmon:2011}.
 
     The state of a CBRNG is a simple integer counter but the output mapping is done using a complex function---usually a cryptographic block cipher.
 
 \subsubsection[ARC4 -- 1997]{ARC4 -- 1997} \label{subsubsec:arc4}
 
-    The \emph{ARC4} is a PRNG first implemented in OpenBSD 2.1\footnote[9]{\url{https://man.openbsd.org/arc4random}} in 1997 for function \lstinline|arc4random|.
+    The \emph{ARC4} is a PRNG first implemented in OpenBSD 2.1\footnote{\url{https://man.openbsd.org/arc4random}} in 1997 for the \lstinline|arc4random| function.
 
-    It generates pseudorandom numbers from the keystream of the RC4 stream cipher which was released by Ronald L. Rivest in 1987. \emph{ARC4} is not exactly a \emph{CBRNG} because it uses a second state which is not a counter but the PRNG is closely related to the other \emph{CBRNG} as it uses just a stream cipher to generate pseudorandom numbers.
+    It generates pseudorandom numbers from the keystream of the RC4 stream cipher, released by Ronald L. Rivest in 1987. ARC4 is not exactly a CBRNG since it uses a second state which is not a counter, but the PRNG is closely related to the other CBRNGs since it uses just a stream cipher to generate pseudorandom numbers.
 
 \subsubsection[ChaCha -- 2008]{ChaCha -- 2008} \label{subsubsec:chacha}
 
-    \emph{ChaCha} is a stream cipher proposed by Daniel J. Bernstein in \cite{Bernstein:2008}. It is used as a PRNG by encoding the state of the PRNG---a simple integer counter---using the \emph{ChaCha} stream cipher.
+    \emph{ChaCha} is a stream cipher proposed by Daniel J. Bernstein in \cite{Bernstein:2008}. It is used as PRNG by encoding the state of the PRNG---a simple integer counter---using the ChaCha stream cipher.
 
-    The following PRNG based on the family of ChaCha stream ciphers were compared:
+    The following PRNGs based on the family of ChaCha stream ciphers were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{ChaCha4}: Based on ChaCha 4-round cipher
@@ -499,7 +498,7 @@ uint32_t sfc32() {
 
     The \emph{Threefry} is a \emph{counter-based random number generator} where the state is mapped to the random output using a simplified Threefish block cipher.
 
-    The following Threefry generators were compared:
+    The following Threefry generators have been compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{Threefry2x32}: 20 rounds, operating on two  \SI{32}{\bit} integers
@@ -510,9 +509,9 @@ uint32_t sfc32() {
 
 \subsubsection[Philox -- 2011]{Philox -- 2011} \label{subsubsec:philox}
 
-    The \emph{Philox} is a \emph{counter-based random number generator} where the state is mapped to the random output using a modified and simplified Threefish block cipher.
+    The \emph{Philox} is a \emph{counter-based random number generator} where the state is mapped to the random output using a custom block cipher.
 
-    The following Threefry generators were compared:
+    The following Philox generators were compared:
     \begin{itemize}
 		\itemsep0em
         \item \textbf{Philox2x32}: 10 rounds, operating on two  \SI{32}{\bit} integers
@@ -533,9 +532,9 @@ uint32_t sfc32() {
 
 \subsection[SplitMix -- 2014]{SplitMix -- 2014} \label{subsec:splitmix}
 
-    \emph{SplitMix} is a PRNG similar to the \emph{CBRNG}s that was proposed by Guy Steele et al. in \cite{Steele:2014}. It is derived from the PRNG \emph{DotMix} which was proposed by Charles Leiserson et al. in \cite{Leiserson:2012}.
+    \emph{SplitMix} is a PRNG similar to the \emph{counter-based random number generators} that was proposed by Guy Steele et al. in \cite{Steele:2014}. It is derived from the PRNG \emph{DotMix} which was proposed by Charles Leiserson et al. in \cite{Leiserson:2012}.
 
-    While the state of \emph{CBRNG}s is advanced by adding $1$---it is a simple counter---the state of \emph{SplitMix} is advanced by adding a fixed $\gamma$. Instead of using a complex hash function for the generation of a pseudorandom integer from the state, \emph{SplitMix} uses the finalization mix of the MurmurHash3\footnote[10]{\url{https://bit.ly/2tI7IqW}} hash function. This is sufficient as long as $\gamma$ is not a simple value like $1$, even or some other problematic value.
+    While the state of CBRNGs is advanced by adding $1$---it is a simple counter---the state of \emph{SplitMix} is advanced by adding a fixed $\gamma$. Instead of using a complex hash function for the generation of a pseudorandom integer from the state, \emph{SplitMix} uses the finalization mix of the MurmurHash3\footnote{\url{https://bit.ly/2tI7IqW}} hash function. This is sufficient as long as $\gamma$ is not a simple value like $1$, even or some other problematic value.
 
     The following implementation (with \lstinline|state| and \lstinline|gamma| properly seeded) of \SI{32}{\bit} \emph{SplitMix} was used:
 \begin{@empty}
@@ -557,13 +556,13 @@ uint32_t splitmix32() {
 }
 \end{centeredshadowboxlisting}
 \end{@empty}
-    The \lstinline{| 1} after the seed of \lstinline|gamma| takes care of even \lstinline|gamma|s which would degrade the quality of the pseudorandom numbers generated.
+    The \lstinline{| 1} after the seed of \lstinline|gamma| takes care of even \lstinline|gamma|s, which would degrade the quality of the generated pseudorandom numbers.
 
     The \emph{SplitMix} PRNG used for the evaluation---\textbf{SplitMix32}---uses the following parameters: \lstinline|m5 = 0x62a9d9ed799705f5|, \lstinline|m6 = 0xcb24d0a5c88c35b3|, \lstinline|v = 33| and \lstinline|w = 28|.
 
-\subsection[Combinations of different PRNG]{Combinations of different PRNG} \label{subsec:combination}
+\subsection[Combinations of different PRNGs]{Combinations of different PRNGs} \label{subsec:combination}
 
-    The following combined PRNG were compared:
+    The following combined PRNGs were compared:
     \begin{itemize}
         \itemsep0em
         \item \textbf{DualRand}: LCG with $a = 0x10405$, $c = 0x3035$, $m = 2^{32} - 1$ XORed with a LFSR approximated by $X_n = X_{n - 1 \bmod 64} \oplus X_{n - 33 \bmod 64} \bmod 2$ on a \SI{128}{\bit} state
@@ -572,13 +571,13 @@ uint32_t splitmix32() {
 
 \subsection[Biased Uniform Int Distribution]{Biased Uniform Integer Distribution} \label{subsec:distribution}
 
-    The PRNGs listed above return pseudorandom integers in the range of $0$ to $2^{32} - 1$ or some other arbitrary range. But for the use in a RANDOM page eviction algorithm, the numbers need to be in the range of the buffer frame indexes.
+    The PRNGs listed above return pseudorandom integers in the range of $0$ to $2^{32} - 1$ or any other arbitrary range. But for the use in a RANDOM page eviction algorithm, the numbers need to be in the range of the buffer frame indices.
 
-    This requires an algorithm that transforms pseudorandom numbers uniformly distributed in a given range to pseudorandom numbers in the wanted range, keeping the uniform distribution. A blog post\footnote[11]{\url{http://www.pcg-random.org/posts/bounded-rands.html}} by Melissa E. O'Neill revealed, that this transformation is the bottleneck of fast random number generation when the \lstinline|std::uniform_int_distribution| from the \textit{C++ Standard Library} is used.
+    This requires an algorithm that transforms pseudorandom numbers uniformly distributed in a given range to pseudorandom numbers in the desired range, keeping the uniform distribution. A blog post\footnote{\url{http://www.pcg-random.org/posts/bounded-rands.html}} by Melissa E. O'Neill revealed that this transformation is the bottleneck of fast random number generation when using the \lstinline|std::uniform_int_distribution| from the \textit{C++ Standard Library}.
 
-    Therefore, the algorithm that turned out to be the fastest in her comparison was used in the evaluation of PRNGs for RANDOM page evictioners. In contrast to the algorithm built into the \textit{C++ Standard Library}, this one returns pseudorandom numbers in a biased uniform distribution when the range of the used PRNG is not a multiple of the range of the buffer frame indexes. For example, if the PRNG returns numbers uniformly distributed in the integer interval $\left[1 .. 6\right]$ and if the buffer frame indexes are in the interval $\left[1 .. 4\right]$, this algorithm returns $1$ and $2$ with a probability of $\sfrac{1}{3}$ and $3$ and $4$ with a probability of $\sfrac{1}{6}$. But as long as the range of buffer frame indexes is much smaller than the range of the used PRNG, the bias is less severe.
+    Therefore, the algorithm that turned out to be the fastest in her comparison was used when evaluating PRNGs for RANDOM page eviction. In contrast to the algorithm built into the \textit{C++ Standard Library}, this algorithm returns pseudorandom numbers in a biased uniform distribution when the range of the PRNG used is not a multiple of the range of the buffer frame indices. For example, if the PRNG returns numbers uniformly distributed in the integer interval $\left[1 .. 6\right]$ and if the buffer frame indices are in the interval $\left[1 .. 4\right]$, this algorithm returns $1$ and $2$ with a probability of $\sfrac{1}{3}$ and $3$ and $4$ with a probability of $\sfrac{1}{6}$. But as long as the range of buffer frame indices is much smaller than the range of the used PRNG, the bias is less severe.
 
-    For a PRNG returning random numbers in the range of $0$ to $2^{32} - 1$, the algorithm is as follows:
+    For a PRNG that returns random numbers in the range of $0$ to $2^{32} - 1$, the algorithm is as follows:
 \begin{@empty}
     \lstset{
         language = [ISO]C++
@@ -593,19 +592,19 @@ uint32_t biased_int_dist(uint32_t ranNum,
 }
 \end{centeredshadowboxlisting}
 \end{@empty}
-    The actual implementation used---available on GitHub\footnote[12]{\url{https://bit.ly/37RQQNx}}---works with PRNGs returning integers in any range as well as floating point numbers. It uses metaprogramming to utilize compile-time calculation wherever possible.
+    The actual implementation used---available on GitHub\footnote{\url{https://bit.ly/37RQQNx}}---works with PRNGs returning both integers in any range as well as floating point numbers. It uses metaprogramming to utilize compile-time calculation wherever possible.
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:random-performance}
 
-    Benchmarks of an exemplary DBMS using all the compared RANDOM page evictioners revealed, that there is no statistically significant difference in the hit rates achieved with these different RANDOM page evictioners. Therefore, the only performance difference between the different RANDOM page evictioners is the overhead imposed by the generation of pseudorandom numbers. For this reason, a microbenchmark measuring only the execution time of the PRNGs is appropriate.
+    Benchmarks of an exemplary DBMS using all the compared RANDOM page eviction implementations revealed that there is no statistically significant difference in the hit rates achieved with these different RANDOM page eviction implementations. The only performance difference between the different RANDOM page eviction implementations is therefore the overhead that results from the generation of pseudorandom numbers. For this reason, a microbenchmark only measuring the execution time of the PRNGs is appropriate.
 
     The only variable of the evaluation is the PRNG used---the alternatives presented in the previous section are evaluated.
 
-    Another potential variable is the number of threats generating pseudorandom numbers. But the behavior of the PRNGs when used concurrently is usually not specified and therefore, all the PRNGs would require synchronization when used by multiple evicting threads. But due to the fact, that the quality of the pseudorandom numbers generated does not matter here, it is assumed, that each evicting thread uses its own thread-local instance of the used PRNG to choose candidates for eviction. And those thread-local instances scale perfectly as long as there are hardware threads available and therefore, an evaluation on one thread is sufficient.
+    Another potential variable is the number of threats generating pseudorandom numbers. But the behavior of the PRNGs when used concurrently is usually not specified and therefore all the PRNGs would require synchronization when used by multiple evicting threads. However, since the quality of the generated pseudo-random numbers is not important here, it is assumed that each evicting thread uses its own thread-local instance of the used PRNG to choose candidates for eviction. And these thread-local instances scale perfectly as long as there are hardware threads available and therefore an evaluation on one thread is sufficient.
 
-    Different algorithms to generate the pseudorandom integers uniformly distributed in a given range could also be compared. But a quick comparison of the custom algorithm presented in Subsection \ref{subsec:distribution} with the ones provided by the \textit{C++ Standard Library}\footnote[13]{\url{https://bit.ly/39Xuiwn}} and by the \textit{Boost Random Number Library}\footnote[14]{\url{https://bit.ly/37JKHTs}} showed, that the used one\footnote[15]{The classic modulo algorithm was used for \textbf{rand}, \textbf{xorwow} and \textbf{xorshift128+}.} is never slower than the competition.
+    Different algorithms to generate the pseudorandom integers uniformly distributed over a given range could also be compared. But a quick comparison of the custom algorithm presented in subsection \ref{subsec:distribution} with the ones provided by the \textit{C++ Standard Library}\footnote{\url{https://bit.ly/39Xuiwn}} and by the \textit{Boost Random Number Library}\footnote{\url{https://bit.ly/37JKHTs}} showed that the one\footnote{The classic modulo algorithm was used for \textbf{rand}, \textbf{xorwow} and \textbf{xorshift128+}.} used is never slower than the competition.
 
-    The smallest ($>0$) and largest integers returned by the PRNGs---re\-pre\-sen\-ting the smallest and largest buffer pool indexes---do not significantly influence the performance of the RANDOM page evictioners. Therefore, this integer interval $\left[1 .. 53467\right]$ is a constant in this evaluation.
+    The smallest ($>0$) and largest integers returned by the PRNGs---re\-pre\-sen\-ting the smallest and largest buffer pool indexes---do not significantly affect the performance of RANDOM page eviction. Therefore, this integer interval $\left[1 .. 53467\right]$ is a constant in this evaluation.
 
 \begin{@empty}
     \nottoggle{bwmode}{
@@ -669,7 +668,7 @@ uint32_t biased_int_dist(uint32_t ranNum,
 
 \subsection[Microbenchmark]{Microbenchmark}
 
-    The microbenchmark used for the performance evaluation of the RANDOM page eviction algorithms instantiates the evaluated PRNG with a seed---generated using \lstinline|std::random_device|\footnote[16]{\url{https://bit.ly/306x2TE}}---, calculates a given number (\num{5000000}) of pseudorandom integers in the interval $\left[1 .. 53467\right]$ using the PRNG and measures the wall time elapsed.
+    The microbenchmark used for the performance evaluation of the RANDOM page eviction algorithms instantiates the evaluated PRNG with a seed---generated with \lstinline|std::random_device|\footnote{\url{https://bit.ly/306x2TE}}---, calculates a given number (\num{5000000}) of pseudorandom integers in the interval $\left[1 .. 53467\right]$ using the PRNG and measures the wall time elapsed.
 
 \subsection[System Configuration]{Configuration of the Used System}
 
@@ -679,20 +678,20 @@ uint32_t biased_int_dist(uint32_t ranNum,
 		\item	\textbf{CPU:} \emph{Intel® Core™ i7-8700} @$12 \times \SI{3.2}{\giga\hertz}$ from late 2017
         \item	\textbf{Main Memory:} $2 \times 8\text{GB} = 16\text{GB}$ of DDR4-SDRAM @\SI{2666}{\mega\hertz}
         \item	\textbf{OS:} \emph{Ubuntu 19.10}
+        \item	\textbf{Compiler: } \emph{GCC 9.2.1} with \texttt{-O3} flag
     \end{itemize}
 \end{@empty}
 
 \subsection[Benchmark Results]{Benchmark Results}
 
-    Figures \ref{fig:random_performance_top} and \ref{fig:random_performance_bottom} show the index generation throughput of the evaluated RANDOM page eviction implementations.
+    The figures \ref{fig:random_performance_top} and \ref{fig:random_performance_bottom} show the index generation throughput of the evaluated RANDOM page eviction implementations.
 
-    The \emph{ICG} \textbf{Hellekalek1995} and the \emph{SWB}s of the \textbf{Ranlux} family (not the non-discarding ``base'' ones) are the slowest PRNGs in the evaluation. The XOR-based \emph{LSFR} PRNGs and the \emph{LCG}s of the \textbf{PCG} and \textbf{MCG} families are among the fastest PRNGs. The very recent \textbf{SplitMix32} PRNG described in Subsection \ref{subsec:splitmix} is by far the fastest algorithm in the competition with an average of \SI{1124474870
-    }{\indexes\per\second} on the used system.
+    The \emph{ICG} \textbf{Hellekalek1995} and the \emph{SWB}s of the \textbf{Ranlux} family (not the non-discarding ``base'' ones) are the slowest PRNGs in the evaluation. The XOR-based \emph{LSFR} PRNGs and the \emph{LCG}s of the \textbf{PCG} and \textbf{MCG} families are among the fastest PRNGs. The very recent \textbf{SplitMix32} PRNG, described in subsection \ref{subsec:splitmix}, is by far the fastest algorithm in the competition with an average of \SI{1124474870}{\indexes\per\second} on the used system.
 
 \section{Conclusion}
 
-    Like any other DBMS component evaluated for this thesis, the performance (the overhead of the eviction candidate selection, not the achieved hit rate) of the RANDOM eviction algorithm is not critical in most cases. But the hit rate achieved with the chosen page eviction strategy is a major performance factor of a database system.
+    Like any other DBMS component evaluated for this thesis, the performance (the overhead of the eviction candidate selection, not the achieved hit rate) of the RANDOM eviction algorithm is not critical in most cases. However, the hit rate achieved with the chosen eviction strategy is a significant performance factor of a DB system (\textbf{DBS}).
 
-    When it comes to the selection of a page eviction strategy, the RANDOM eviction strategy is the worst but simplest option. The simplicity makes the RANDOM page eviction strategy a valid choice when it is expected that the main memory is (almost) always large enough to contain the complete working set of a DBS. In this case, the RANDOM eviction strategy would not perform (much) worse than any other ``good'' page eviction strategy.
+    When it comes to the selection of a page eviction strategy, the RANDOM eviction strategy is the worst but simplest option. Its simplicity makes the RANDOM page eviction strategy a good choice if the main memory is expected to be (almost) always large enough to hold the entire working set of a DBS. In this case, the RANDOM eviction strategy would not perform (much) worse than any other ``good'' page eviction strategy.
 
-    When the RANDOM page eviction strategy is chosen for the use in a buffer pool manager of a DBMS, there is basically no reason not to use the fastest PRNG available in the particular programming language. The fastest PRNG in this comparison---\emph{SplitMix}---is part of the Java Development Kit and good implementations are also available in Haskell and C++. The slightly slower XOR-based \emph{LSFR} PRNGs are available for many programming languages and the mid-range PRNG \textbf{MT19937} is the default PRNG for most of the programming languages. Most of the fast general-purpose PRNGs can be easily implemented in any programming language typically used in the development of a DBMS and therefore, the lack of such a PRNG in a particular programming language can quickly be compensated.
+    If the RANDOM page eviction strategy is chosen for the use in a buffer pool manager of a DBMS, there is basically no reason not to use the fastest PRNG available in the particular programming language. The fastest PRNG in this comparison---\emph{SplitMix}---is part of the Java Development Kit and good implementations are also available in Haskell and C++. The somewhat slower XOR-based \emph{LSFR} PRNGs are available for many programming languages, and the mid-range PRNG \textbf{MT19937} is the default PRNG of most of the programming languages. Most of the fast general-purpose PRNGs can be easily implemented in any programming language typically used in the development of a DBMS, and therefore the lack of such a PRNG in a particular programming language can quickly be compensated.

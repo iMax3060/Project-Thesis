@@ -4,7 +4,7 @@
 
     The LOOP page eviction algorithm is the simplest form of the RANDOM page eviction strategy where the eviction candidates are selected round-robin based on their buffer frame index.
 
-    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a \emph{Counter-Based Random Number Generator} as in Subsection \ref{subsec:cbrng}, but instead of using a complex mapping function, the identity function modulo the number of buffer pool frames is used to generate the pseudorandom numbers--- which generates an ordered sequence of buffer indexes.
+    The LOOP eviction strategy uses a ``pseudorandom'' number generator---basically a CBRNG as in subsection \ref{subsec:cbrng}, but instead of using a complex mapping function, the identity function modulo the number of buffer pool frames is used to generate the pseudorandom numbers---which generates an ordered sequence of buffer indices.
 
 \section[Compared Counter Implementations]{Compared Counter Implementations}
 
@@ -34,11 +34,11 @@
     \end{itemize}
 \end{@empty}
 
-    The counters return values from $1$ to $\texttt{blockCount} - 1$---the range of the buffer frame indexes.
+    The counters return values from $1$ to $\texttt{blockCount} - 1$---the range of the buffer frame indices.
 
 \subsection[Mutex Counter]{Mutex Counter} \label{subsec:mutex_counter}
 
-    The \emph{mutex counter} is a blocking counter which uses one global counter---used to select candidates for page eviction---synchronized using a mutex called through the \lstinline{std::mutex} interface.
+    The \emph{mutex counter} is a blocking counter which uses one global counter---used to select candidates for page eviction---synchronized with a mutex called via the \lstinline{std::mutex} interface.
 
 \begin{@empty}
     \lstset{
@@ -60,7 +60,7 @@ inline uint32_t mutexCounter() {
 
 \subsection[Spinlock Counter]{Spinlock Counter} \label{subsec:spinlock_counter}
 
-    The \emph{spinlock counter} is also a blocking counter using one global counter but it is protected by a spinlock implemented using a \lstinline{std::atomic_flag}.
+    The \emph{spinlock counter} is also a blocking counter that uses one global counter but it is protected by a spinlock implemented using a \lstinline{std::atomic_flag}.
 
 \begin{@empty}
     \lstset{
@@ -87,7 +87,7 @@ inline uint32_t spinlockCounter() {
 
 \subsection[Modulo Counter]{Modulo Counter} \label{subsec:modulo_counter}
 
-    The \emph{modulo counter} is a non-blocking counter which uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint64_t>}). The modulo is calculated thread-locally and therefore, the value of the global counter is strictly increasing.
+    The \emph{modulo counter} is a non-blocking counter that uses atomic increment operations on a global counter (of type \lstinline{std::atomic<uint64_t>}). The modulo is calculated thread-local and therefore the value of the global counter is strictly increasing.
 
 \begin{@empty}
     \lstset{
@@ -105,7 +105,7 @@ inline uint32_t moduloCounter() {
 
 \subsection[Local Counter]{Local Counter} \label{subsec:local_counter}
 
-    The \emph{local counter} is---obviously---a local counter where each thread performing page evictions uses its own circular counter.
+    The \emph{local counter} is---obviously---a local counter, where each thread that performs page evictions uses its own circular counter.
 
 \begin{@empty}
     \lstset{
@@ -125,7 +125,7 @@ inline uint32_t localCounter() {
 
 \subsection[Local Modulo Counter]{Local Modulo Counter} \label{subsec:local_modulo_counter}
 
-    The \emph{local modulo counter} is a local counter where the circular counting is not achieved with a branch operation but with a possibly cheaper modulo operation calculated during each call.
+    The \emph{local modulo counter} is a local counter where the circular counting is not achieved with a branch operation, but with a possibly cheaper modulo operation calculated during each call.
 
 \begin{@empty}
     \lstset{
@@ -165,13 +165,13 @@ inline uint32_t lockFreeCounter() {
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:loop-performance}
 
-    Due to the fact that the eviction decisions of LOOP page evictioners is mostly implementation independent, the achieved hit rates achieved in an exemplary DBMS are not required as performance measure for this evaluation. The only performance difference between the different LOOP page evictioners is the overhead imposed by the concurrent counting. Therefore, a microbenchmark measuring only the execution time of the counting is appropriate.
+    Since the eviction decisions of LOOP page evictioners are largely im\-ple\-men\-ta\-tion-independent, the achieved hit rates in an exemplary DBMS are not required as performance benchmark for this evaluation. The only difference in performance between the different LOOP page eviction algorithms is the overhead resulting from the concurrent counting. Therefore, a microbenchmark measuring only the execution time of the counting is appropriate.
 
-    The variables of the evaluation are the concurrent counter implementation---the alternatives presented in the previous section are evaluated---and the number of threads concurrently incrementing the counter. The smallest ($>0$) and largest integers returned by the counters---representing the smallest and largest buffer pool indexes---do not significantly influence the performance of the LOOP page evictioners but when the largest buffer pool index is a power of $2$, the modulo operations of the \emph{modulo counter} and \emph{local modulo counter} are significantly faster. Therefore, this integer interval $\left[1 .. 53467\right]$---where $53467$ is not a power of $2$ because the evaluation should be as general as possible---is a constant in this evaluation.
+    The variables of the evaluation are the concurrent counter im\-ple\-men\-ta\-tion---the alternatives presented in the previous section are evaluated---and the number of threads concurrently incrementing the counter. The smallest ($>0$) and largest integers returned by the counters---representing the smallest and largest buffer pool indexes---do not significantly affect the performance of the LOOP page eviction, but when the largest buffer pool index is a power of $2$, the modulo operations of the \emph{modulo counter} and \emph{local modulo counter} are significantly faster. Therefore this integer interval $\left[1 .. 53467\right]$---where $53467$ is not a power of $2$ because the evaluation should be as general as possible---is a constant in this evaluation.
 
 \subsection[Microbenchmark]{Microbenchmark}
 
-    The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a given number of worker threads---each of them calls the evaluated concurrent counter a given number of times (\num{1000000})---and measures the wall time elapsed until all the worker threads finished their operation and joined.
+    The microbenchmark used for the performance evaluation of the LOOP page eviction algorithms forks a certain number of worker threads---each of them calls the evaluated concurrent counter a certain number of times (\num{1000000})---and measures the wall time that has elapsed until all the worker threads finished their operation and joined.
 
 \subsection[System Configuration]{Configuration of the Used System}
 
@@ -181,13 +181,14 @@ inline uint32_t lockFreeCounter() {
 		\item	\textbf{CPU:} \emph{Intel® Core™ i7-8700} @$12 \times \SI{3.2}{\giga\hertz}$ from late 2017
         \item	\textbf{Main Memory:} $2 \times 8\text{GB} = 16\text{GB}$ of DDR4-SDRAM @\SI{2666}{\mega\hertz}
         \item	\textbf{OS:} \emph{Ubuntu 19.10}
+        \item	\textbf{Compiler: } \emph{GCC 9.2.1} with \texttt{-O3} flag
     \end{itemize}
 \end{@empty}
 
 \subsection[Microbenchmark Results]{Microbenchmark Results} \label{subsec:loop-results}
 
 \begin{@empty}
-    Figure \ref{fig:loop_desktop_performance} shows the LOOP index generation throughput which is total number of indexes generated (from all working threads) per time.
+    Figure \ref{fig:loop_desktop_performance} shows the LOOP index generation throughput, which is total number of indexes generated (on all working threads) per time.
 
     \nottoggle{bwmode}{
         \tikzset{%
@@ -209,9 +210,9 @@ inline uint32_t lockFreeCounter() {
         }
     }
 
-    The \emph{blocking counters}---\emph{mutex counter} \ref{pgfplots:desktop-mutex} and \emph{spinlock counter} \ref{pgfplots:desktop-spinlock}---are the slowest counters when there are multiple working threads. The locking overhead and---for higher numbers of working threads---the lock contention make these concurrent counters up to more than one order of magnitude slower than the \emph{non-blocking counters}. The more optimized mutex, which uses low-overhead busy-waiting (spinlock behavior) in situations of low contention and higher-overhead queuing and context switches in situations of higher contention, can better utilize the available physical CPU cores by suspending waiting threads---and therefore, omitting unnecessary uses of hyper-threading.
+    The \emph{blocking counters}---\emph{mutex counter} \ref{pgfplots:desktop-mutex} and \emph{spinlock counter} \ref{pgfplots:desktop-spinlock}---are the slowest counters when there are multiple working threads. The locking overhead and---for a higher number of working threads---the lock contention makes these concurrent counters slower than the \emph{non-blocking counters} by up to more than one order of magnitude. The more optimized mutex, which uses low-overhead busy-waiting (spinlock behavior) in situations of low contention and higher-overhead queuing and context switches in situations of higher contention, can better utilize the available physical CPU cores by suspending waiting threads---thus eliminating unnecessary uses of hyper-threading.
 
-    The \emph{non-blocking counters}---\emph{modulo counter} \ref{pgfplots:desktop-modulo} and \emph{lock-free counter} \ref{pgfplots:desktop-lock-free}---perform almost identical to each other. In situations without contention, the \emph{modulo counter} is identical to the \emph{local modulo counter} but the \emph{lock-free counter} suffers from the overhead due to the conditional branch operation. But most of the times, a modern CPU can correctly predict the targets of these branches. But when there are multiple working threads counting, the atomic operations on the counter variable are the major overhead slowing down the \emph{non-blocking counters} compared to \emph{local counters}.
+    The \emph{non-blocking counters}---\emph{modulo counter} \ref{pgfplots:desktop-modulo} and \emph{lock-free counter} \ref{pgfplots:desktop-lock-free}---perform almost identical to each other. In situations without contention, the \emph{modulo counter} is identical to the \emph{local modulo counter}, but the \emph{lock-free counter} suffers from the overhead due to the conditional branch operation. But most of the times, a modern CPU can correctly predict the targets of these branches. But when there are multiple working threads counting, the atomic operations on the counter variable are the bottleneck slowing down the \emph{non-blocking counters} compared to \emph{local counters}.
 
     \begin{figure}[ht!]
         \centering
@@ -245,9 +246,9 @@ inline uint32_t lockFreeCounter() {
         \label{fig:loop_desktop_performance}
     \end{figure}
 
-    Obviously, the \emph{local counters}---\emph{local counter} \ref{pgfplots:desktop-local} and \emph{local modulo counter} \ref{pgfplots:desktop-local-modulo}---are the fastest counters because they completely omit any synchronization between the counting threads. While the other counters count based on a global counter, these ones count based on local counters, resulting in a thread-wise round-robin selection of eviction candidates instead of a global round-robin selection of eviction candidates. The independence of the threads makes these counters very scalable as long as there are hardware threads available. This results in a performance advantage of up to almost two orders of magnitude compared to the \emph{non-blocking counters}. The significantly higher performance of the \emph{local counter} in comparison to the \emph{local modulo counter} is the result of the slow modulo operation when the divisor is not a power of two. The branch target of the conditional branch in the \emph{local counter} is predicted correctly most of the times, making its overhead negligible.
+    Obviously, the \emph{local counters}---\emph{local counter} \ref{pgfplots:desktop-local} and \emph{local modulo counter} \ref{pgfplots:desktop-local-modulo}---are the fastest counters because they completely omit any synchronization between the counting threads. While the other counters count based on a global counter, these ones count based on local counters, resulting in a thread-wise round-robin selection of eviction candidates instead of a global round-robin selection of eviction candidates. The independence of the threads makes these counters very scalable as long as there are hardware threads available. This results in a performance advantage of up to almost two orders of magnitude compared over the \emph{non-blocking counters}. The significantly higher performance of the \emph{local counter} compared to the \emph{local modulo counter} is the result of the slow modulo operation when the divisor is not a power of two. The branch target of the conditional branch in the \emph{local counter} is predicted correctly most of the times, making its overhead negligible.
 \end{@empty}
 
 \section{Conclusion}
 
-    Each LOOP page eviction algorithm is a good replacement for any other RANDOM page eviction algorithm. Tests in an OLTP database showed a hit rate of the LOOP strategy not worse than the one of any RANDOM page eviction strategy and the overheads of the LOOP page eviction strategies---especially of the \emph{local counters}---are lower than the ones of any other RANDOM page eviction strategy. This makes the LOOP page evictioners superior to the other RANDOM page evictioners in OLTP applications (represented by the TPC-C benchmark). Due to the fact, that the use of local counters instead of a global counter does not change the hit rate in the database, the \emph{local counter}---the LOOP page eviction algorithm with the lowest overhead---can be recommended.
+    Each LOOP page eviction algorithm is a good replacement for any other RANDOM page eviction algorithm. Tests in an OLTP database showed that the hit rate of the LOOP strategy is not worse than that of any other RANDOM page eviction strategy, and the overheads of the LOOP page eviction strategies---especially of the \emph{local counters}---are lower than the ones of any other RANDOM page eviction strategy. This makes the LOOP page evictioners superior to the other RANDOM page evictioners in OLTP applications (represented by the TPC-C benchmark). Since the use of local counters instead of a global counter does not change the hit rate in the DBS, the \emph{local counter}---the LOOP page eviction algorithm with the lowest overhead---can be recommended.
