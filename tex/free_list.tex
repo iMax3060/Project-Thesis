@@ -6,15 +6,15 @@
 
     This feature is provided by the buffer pool management, which manages the currently used subset of DB pages---the working set---in buffer frames located in memory. In the general case of fixed-size pages, a buffer frame is a fixed-size portion of memory that can hold one DB page, and each of these frames has a frame index as an identifier.
 
-    During operation, the DB pages are fetched dynamically from the DB into buffer frames. As soon as a page is no longer needed in memory (i. e. it is no longer needed to process a running transaction), it can be evicted from the buffer pool to free up the buffer frame.
+    During operation, the DB pages are fetched dynamically from the DB into buffer frames. As soon as a page is no longer needed in memory (i. e., it is no longer needed to process a running transaction), it can be evicted from the buffer pool to free up the buffer frame.
 
     The buffer manager needs a kind of free list when assigning a buffer frame to a fetched DB page, because an unrestricted overwriting of data in buffer frames would lead to undefined behavior.
 
-\section[Compared Open Source Queue Implementations]{Compared Open Source Queue Implementations}
+\section[Compared Open-Source Queue Implementations]{Compared Open-Source Queue Implementations}
 
     To ease implementation of eviction strategies like CLOCK, a free list should use a FIFO data structure like a queue---typically implemented as a linked list. Therefore, the buffer frame that is released first is also (re)used first.
 
-    Almost every state-of-the-art DBMS supports multi-threading and thus there are usually multiple threads concurrently fetching pages into the buffer pool and evicting pages from the buffer pool. Accordingly, a buffer frame free list must support thread-safe functions to push and pop frame indexes in and out of the free list. Queues providing these thread-safe access functions are usually referred to as multi-producer (add frame indexes), multi-consumer (retrieve/remove frame indexes) queues (\textbf{MPMC} queues).
+    Almost every state-of-the-art DBMS supports multi-threading and, thus, there are usually multiple threads concurrently fetching pages into the buffer pool and evicting pages from the buffer pool. Accordingly, a buffer frame free list must support thread-safe functions to push and pop frame indexes in and out of the free list. Queues providing these thread-safe access functions are usually referred to as multi-producer (add frame indexes), multi-consumer (retrieve/remove frame indexes) queues (\textbf{MPMC} queues).
 	
     An approximate number of buffer indexes in the free list should also be provided by each free list implementation to support (batch-wise) eviction of pages as soon as there are only a few free buffer frames left. Thread-safe access to this number is desirable, but not mandatory.
 
@@ -28,19 +28,19 @@
 
 \subsection[Boost Lock-Free Queue with Fixed Size]{Boost Lock-Free Queue with Fixed Size} \label{subsec:boost-fixed}
 
-	This queue implementation is identical to the data structure in subsection \ref{subsec:boost}, but does not use dynamic memory management internally---it is a \textbf{bounded} queue. As long as the required capacity of the queue---in our case the maximum number of buffer frames in the buffer pool---is known when the queue is allocated, this queue implementation can be used. This implementation uses a fixed size array instead of dynamically allocated nodes for its stored data---the indexes of the free buffer frames.
+	This queue implementation is identical to the data structure in subsection \ref{subsec:boost}, but does not use dynamic memory management internally---it is a \textbf{bounded} queue. As long as the required capacity of the queue---in our case, the maximum number of buffer frames in the buffer pool---is known when the queue is allocated, this queue implementation can be used. This implementation uses a fixed-size array instead of dynamically allocated nodes for its stored data---the indexes of the free buffer frames.
 
 \subsection[CDS BasketQueue]{CDS Basket Lock-Free Queue} \label{subsec:cds-basket}
 
 	Among many other concurrent data structures, the \textit{Concurrent Data Structures} C++ library\footnote{\url{https://github.com/khizmax/libcds}} provides many different thread-safe queue implementations. The \textbf{unbounded} \emph{basket lock-free queue}\footnote{\url{https://bit.ly/2SGv2A6}} is based on the algorithm proposed by M. Hoffman, O. Shalev and N. Shavit in \cite{Hoffman:2007}.
 	
-	Internally, this queue does not use an absolute FIFO order. Instead, it places concurrently enqueued elements into one ``basket'' of elements. The elements within one basket are not ordered specifically, but the various ``baskets'' used over time are ordered by FIFO. Therefore, the dequeue operation just removes one of the elements in the oldest ``basket''. The queue's dynamic memory management uses a garbage collector to deallocate emptied ``baskets''.
+	Internally, this queue does not use an absolute FIFO order. Instead, it places concurrently enqueued elements into a ``basket'' of elements. The elements within this basket are not ordered specifically, but the various ``baskets'' used over time are ordered by FIFO. Therefore, the dequeue operation just removes one of the elements in the oldest ``basket''. The queue's dynamic memory management uses a garbage collector to deallocate emptied ``baskets''.
 
 \subsection[CDS FCQueue]{CDS Flat-Combining Sequential Queue} \label{subsec:cds-fc}
 
 	The \textit{Concurrent Data Structures} C++ library does also provides an \textbf{unbounded} thread-safe queue that uses flat combining\footnote{\url{https://bit.ly/2ZEsrYO}}. The flat combining technique was proposed by D. Hendler, I. Incze, N. Shavit and M. Tzafrir in \cite{Hendler:2010}.  This technique can make any sequential data structure thread-safe---in case of the \emph{flat-combining sequential queue}, the \texttt{std::queue}\footnote{\url{https://en.cppreference.com/w/cpp/container/queue}} of the \textit{C++ Standard Library}\footnote{\url{https://en.cppreference.com/w/cpp}} is used as the base data structure.
 	
-	The flat combining technique uses thread-local publication lists to record operations performed by these threads. To combine these thread-local publication lists into the global sequential data structure, a \textbf{global lock} must be. The thread that acquired the global lock also combines the publication lists of all other threads, thus reducing the lock overhead. The elements of each operation executed during the combining are stored into the respective publication list together with the global combining pass number. A thread with a non-empty publication list that tries to acquire the global lock needs to wait till the combining thread updated its publication list.
+	The flat combining technique uses thread-local publication lists to record operations performed by these threads. To combine these thread-local publication lists with the global sequential data structure, a \textbf{global lock} must be used. The thread that acquired the global lock also combines the publication lists of all other threads, thus reducing the lock overhead. The elements of each operation executed during the combining process are stored into the respective publication list together with the global combining pass number. A thread with a non-empty publication list, that tries to acquire the global lock, needs to wait till the combining thread updated its publication list.
 
 \subsection[CDS MSQueue]{CDS Michael \& Scott Lock-Free Queue} \label{subsec:cds-ms}
 
@@ -78,19 +78,19 @@
 
 \subsection[Folly MPMC Queue]{Folly MPMC Queue} \label{subsec:folly-mpmc}
 
-	Facebook's open source library \textit{Folly}\footnote{\url{https://github.com/facebook/folly}} provides a \textbf{bounded} \textbf{lock-free} queue implementation. An unbounded version is also provided, but due to the typically higher performance of bounded ones, it is not evaluated here.
+	Facebook's open-source library \textit{Folly}\footnote{\url{https://github.com/facebook/folly}} provides a \textbf{bounded} \textbf{lock-free} queue implementation. An unbounded version is also provided, but, due to the typically higher performance of bounded ones, it is not evaluated here.
 	
-	\textit{Folly}'s MPMC queue uses a ticket dispenser system to give a thread access to one of the single-element queues used. Those ticket dispensers for the head and tail of the queue use atomic increment operations, which are supposed to be more robust against contention than CAS operations used in e.g. the Michael \& Scott lock-free queue.
+	\textit{Folly}'s MPMC queue uses a ticket dispenser system to give a thread access to one of the single-element queues used. Those ticket dispensers for the head and tail of the queue use atomic increment operations, which are supposed to be more robust against contention than CAS operations used in, e.g., the Michael \& Scott lock-free queue.
 
 \subsection[Dmitry Vyukov's MPMC Queue]{Dmitry Vyukov's Bounded MPMC Queue} \label{subsec:vyukov}
 
-	This\footnote{\url{https://bit.ly/35a5lKL}} is Vyukov's original implementation of his \textbf{bounded} thread-safe MPMC queue.
+	This footnote\footnote{\url{https://bit.ly/35a5lKL}} refers to Vyukov's original implementation of his \textbf{bounded} thread-safe MPMC queue.
 
-	Vyukov's thread-safe queue implementation is very similar to Michael \& Scott blocking queue with fine-grained locking from subsection \ref{subsec:cds-rw}, but instead of using mutexes as locks, his implementation uses atomic read-modify-write operations. This results in a cost of basically one CAS operation per enqueue/dequeue operation.
+	Vyukov's thread-safe queue implementation is very similar to the Michael \& Scott blocking queue with fine-grained locking from subsection \ref{subsec:cds-rw}, but, instead of using mutexes as locks, his implementation uses atomic read-modify-write operations. This results in a cost of basically one CAS operation per enqueue/dequeue operation.
 
 \subsection[Gavin Lambert's MPMC Queue]{Gavin Lambert's MPMC Bounded Lock-Free Queue} \label{subsec:lampert}
 
-	This\footnote{\url{https://bit.ly/2F7jvlb}} is another version of Vyukov's thread-safe queue design from subsection \ref{subsec:vyukov} implemented by Gavin Lambert.
+	This footnote\footnote{\url{https://bit.ly/2F7jvlb}} refers to another version of Vyukov's thread-safe queue design from subsection \ref{subsec:vyukov} implemented by Gavin Lambert.
 
 %\subsection[\texttt{moodycamel::ConcurrentQueue}]{\texttt{moodycamel::ConcurrentQueue}} \label{subsec:moodycamel}
 %
@@ -102,7 +102,7 @@
 %
 \subsection[Matt Stump's MPMC Queue]{Matt Stump's Bounded MPMC Queue} \label{subsec:vyukov-variation}
 
-	This\footnote{\url{https://github.com/mstump/queues}} is yet another version of Vyukov's thread-safe queue design from subsection \ref{subsec:vyukov} implemented by Matt Stump.
+	This footnote\footnote{\url{https://github.com/mstump/queues}} refers to yet another version of Vyukov's thread-safe queue design from subsection \ref{subsec:vyukov}, implemented by Matt Stump.
 
 \subsection[Erik Rigtorp's MPMC Queue]{Erik Rigtorp's Bounded MPMC Queue} \label{subsec:rigtorp}
 
@@ -110,23 +110,23 @@
 
 \subsection[TBB Concurrent Queue]{TBB Concurrent Queue} \label{subsec:intel-unbounded}
 
-	The \textit{Threading Building Blocks} library\footnote{\url{https://www.threadingbuildingblocks.org/}} is an open source library originally developed by Intel®. The first thread-safe queue implementation\footnote{\url{https://software.intel.com/en-us/node/506200}} of this library is \textbf{unbounded} and \textbf{non-blocking}.
+	The \textit{Threading Building Blocks} library\footnote{\url{https://www.threadingbuildingblocks.org/}} is an open-source library originally developed by Intel®. The first thread-safe queue implementation\footnote{\url{https://software.intel.com/en-us/node/506200}} of this library is \textbf{unbounded} and \textbf{non-blocking}.
 	
-	Internally, this queue implementation uses multiple lock-based micro queues to allow concurrent enqueue/dequeue operations. Therefore, this thread-safe queue does not maintain the order of elements enqueued by different threads.
+	Internally, this queue implementation uses multiple lock-based micro-queues to allow concurrent enqueue/dequeue operations. Therefore, this thread-safe queue does not maintain the order of elements enqueued by different threads.
 
-    Due to the implementation with multiple single-producer, multi-consumer queues (\textbf{SPMC} queues), this queue implementation should only be used as a buffer frame free list if there is exactly one thread that is evicting pages from the buffer pool---and therefore, enqueuing buffer frame indexes of emptied buffer frames.
+    Due to the implementation with multiple single-producer, multi-consumer queues (\textbf{SPMC} queues), this queue implementation should only be used as a buffer frame free list, if there is exactly one thread that is evicting pages from the buffer pool---and, therefore, enqueuing buffer frame indexes of emptied buffer frames.
 
 \subsection[TBB Bounded Concurrent Queue]{TBB Bounded Concurrent Dual Queue} \label{subsec:intel-bounded}
 
 	The other thread-safe queue implementation\footnote{\url{https://software.intel.com/en-us/node/506201}} of the \textit{Threading Building Blocks} library is \textbf{bounded} and \textbf{partially non-blocking}.
 	
-	This queue implementation is almost identical to the other one of the \textit{Threading Building Blocks} library, but allows the capacity limitation. An enqueuing operation must wait if the queue is already full according to the specified capacity.
+	This queue implementation is almost identical to the other one of the \textit{Threading Building Blocks} library, but allows a capacity limitation. An enqueuing operation must wait if the queue is already full according to the specified capacity.
 
 \section[Performance Evaluation]{Performance Evaluation} \label{sec:free-list-performance}
 
-\subsection[Microbenchmark]{Microbenchmark} \label{subsec:free-list-microbenchmark}
+\subsection[Micro-Benchmark]{Micro-Benchmark} \label{subsec:free-list-micro-benchmark}
 
-	The used microbenchmark simulates a high contented free list. The number of working threads, the number of iterations (either fetching a page into a free buffer frame or evicting of a batch of pages) per thread, and the batch size of buffer frames to be freed at once can be varied. No complete buffer pool is simulated---there is only the free list with operations to enqueue and dequeue buffer frame indexes. Each working thread performs the following operations per iterations:
+	The used micro-benchmark simulates a highly contented free list. The number of working threads, the number of iterations (either fetching a page into a free buffer frame or evicting of a batch of pages) per thread, and the batch size of buffer frames to be freed at once can be varied. No complete buffer pool is simulated---there is only the free list with operations to enqueue and dequeue buffer frame indexes. Each working thread performs the following operations per iterations:
 	
 \begin{@empty}
 	\begin{itemize}
@@ -179,10 +179,10 @@
 	\end{itemize}
 \end{@empty}
 
-\subsection[Microbenchmark Results]{Microbenchmark Results} \label{subsec:free-list-results}
+\subsection[Micro-Benchmark Results]{Micro-Benchmark Results} \label{subsec:free-list-results}
 
 \begin{@empty}
-    Figure \ref{fig:free_list_performance} shows the throughput of free list operations, measured with the microbenchmark. Each iteration of the microbenchmark from subsection \ref{subsec:free-list-microbenchmark}---that performs either a pull or a push operation on the free list---is one operation on the evaluated free list queue. The operation throughput is total number of operations (of all working threads) performed on the free list per time.
+    Figure \ref{fig:free_list_performance} shows the throughput of free list operations, measured with the micro-benchmark. Each iteration of the micro-benchmark from subsection \ref{subsec:free-list-micro-benchmark}---that performs either a pull or a push operation on the free list---is one operation on the evaluated free list queue. The operation throughput is the total number of operations (of all working threads) performed on the free list per time.
         
 	\nottoggle{bwmode}{
         \tikzset{%
@@ -271,11 +271,11 @@
 
     The \emph{CDS segmented queue} \ref{pgfplots:cds-segmented} is the slowest free list queue implementation for any number of concurrent threads. The very similar \emph{CDS basket lock-free queue} \ref{pgfplots:cds-basket} performs just as bad on \num{1} working thread and not much better on a higher number of threads.
 
-    The \emph{CDS} queue implementations \emph{CDS Ladan-Mozes \& Shavit optimistic queue} \ref{pgfplots:cds-optimistic}, \emph{CDS Michael \& Scott lock-free queue} \ref{pgfplots:cds-ms} and \emph{CDS variation of Michael \& Scott lock-free queue} \ref{pgfplots:cds-moir} are also similar to each other and therefore they all perform very similar. Their performance for a low number of working threads is better than the one of the \emph{CDS Basket Lock-Free Queue}, but for higher numbers of threads their performance is even worse.
+    The \emph{CDS} queue implementations \emph{CDS Ladan-Mozes \& Shavit optimistic queue} \ref{pgfplots:cds-optimistic}, \emph{CDS Michael \& Scott lock-free queue} \ref{pgfplots:cds-ms} and \emph{CDS variation of Michael \& Scott lock-free queue} \ref{pgfplots:cds-moir} are also similar to each other and, therefore, they all perform very similar. Their performance for a low number of working threads is better than the one of the \emph{CDS Basket Lock-Free Queue}, but for higher numbers of threads their performance is even worse.
 
-    The very simple \emph{CDS flat-combining lock-free queue} \ref{pgfplots:cds-fc} performs not too bad for \num{\leq2} threads, but the global lock limits the concurrency and therefore performance drops by a factor of \num{>3} when \num{\geq6} threads concurrently working on the free list queue.
+    The very simple \emph{CDS flat-combining lock-free queue} \ref{pgfplots:cds-fc} performs not too bad for \num{\leq2} threads, but the global lock limits the concurrency and, therefore, performance drops by a factor of \num{>3} when \num{\geq6} threads concurrently working on the free list queue.
 
-    The throughput of the two queue implementations from the \textit{Boost C++ Libraries}---the \emph{Boost lock-free queue with variable size} \ref{pgfplots:boost} and the \emph{Boost lock-free queue with fixed size} \ref{pgfplots:boost-fixed}---drops even earlier than the one of the \emph{CDS flat-combining lock-free queue}. For \num{1} working thread, they perform good, but for \num{>1} threads their performance is poor. The overhead due to the dynamic memory management of the unbounded version is negligible.
+    The throughput of the two queue implementations from the \textit{Boost C++ Libraries}---the \emph{Boost lock-free queue with variable size} \ref{pgfplots:boost} and the \emph{Boost lock-free queue with fixed size} \ref{pgfplots:boost-fixed}---drops even earlier than the one of the \emph{CDS flat-combining lock-free queue}. For \num{1} working thread, they perform well, but for \num{>1} threads their performance is poor. The overhead due to the dynamic memory management of the unbounded version is negligible.
 
     The three implementations of Vyukov's MPMC queue design---\emph{CDS Vyukov's MPMC bounded queue} \ref{pgfplots:cds-vyukovmpmccycle}, \emph{Matt Stump's bounded MPMC queue} \ref{pgfplots:vyukov-variation} and \emph{Gavin Lambert's MPMC bounded lock-free queue} \ref{pgfplots:lampert}---perform better than those already mentioned, but the original \emph{Dmitry Vyukov's bounded MPMC queue} \ref{pgfplots:vyukov} performs even better. All implementations of Vyukov's MPMC queue design are the best free list queues when there is only \num{1} working thread.
 
